@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>aspnet-Traces-752a1d8e-fb91-4ce9-b921-b0e7689693e3</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.27" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.27" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.27" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.27" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.27">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.23" />
+  </ItemGroup>
+	<ItemGroup>
+		<UpToDateCheckBuilt Include="wwwroot/css/input.css"  Set="css"/>
+	</ItemGroup>
+	<Target Name="Tailwind" BeforeTargets="Build;PrepareForPublish" >
+		<Exec Command="npm install" />
+		<Exec Command="npx tailwindcss -i wwwroot/css/input.css -o wwwroot/css/output.css --minify" />
+		<ItemGroup>
+			<Content Include="wwwroot/css/output.css" CopyToPublishDirectory="Always">
+			</Content>
+		</ItemGroup>
+	</Target>
+</Project>
