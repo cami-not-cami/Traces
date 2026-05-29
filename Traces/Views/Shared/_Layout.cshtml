@@ -1,4 +1,4 @@
-﻿@inject IConfiguration Configuration
+﻿
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -104,14 +104,15 @@
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/js/site.js" asp-append-version="true"></script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=@Configuration["ApiKeys:GoogleApiKey"]"></script>
+
     <script>
         // Simple vanilla JS to replace Bootstrap's mobile toggle functionality
         document.querySelector('button[aria-controls="mobile-menu"]').addEventListener('click', function() {
         const menu = document.getElementById('mobile-menu');
         menu.classList.toggle('hidden');
         });
+            
+
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)

@@ -19,9 +19,9 @@
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.23" />
   </ItemGroup>
 	<ItemGroup>
-		<UpToDateCheckBuilt Include="wwwroot/css/input.css"  Set="css"/>
+		<UpToDateCheckBuilt Include="wwwroot/css/input.css" Set="css" />
 	</ItemGroup>
-	<Target Name="Tailwind" BeforeTargets="Build;PrepareForPublish" >
+	<Target Name="Tailwind" BeforeTargets="Build;PrepareForPublish">
 		<Exec Command="npm install" />
 		<Exec Command="npx tailwindcss -i wwwroot/css/input.css -o wwwroot/css/output.css --minify" />
 		<ItemGroup>
