@@ -1,22 +1,224 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
-}
+﻿
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <label>
-        <input type="checkbox" checked />
-        Browser default
-    </label>
-    <label>
-        <input class="accent-pink-500" type="checkbox" checked />
-        Customized
-    </label>
-    <div class="bg-red-500 text-white p-4">
-        Tailwind Works
-    </div>
-    <div class="text-red-600">
-        Tailwind Works
-    </div>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+
+    <section class="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-3xl p-8 md:p-12 shadow-xl relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl"></div>
+
+        <div class="max-w-2xl relative z-10">
+            <h1 class="text-4xl md:text-5xl font-black tracking-tight leading-tight mb-4">
+                Start planning your <span class="text-indigo-400">next big adventure</span>!
+            </h1>
+            <p class="text-slate-300 text-base md:text-lg mb-6 leading-relaxed">
+                Create customizable itineraries, map out route paths, monitor your budget limitations, and share live plans with group coordinates.
+            </p>
+            <button onclick="document.getElementById('search-form-section').scrollIntoView({ behavior: 'smooth' })"
+                    class="bg-indigo-500 hover:bg-indigo-600 text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-lg shadow-indigo-500/30 active:scale-[0.98]">
+                Get Started Free
+            </button>
+        </div>
+    </section>
+
+    <section id="search-form-section" class="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
+
+        <div class="md:col-span-5 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+            <div>
+                <h2 class="text-xl font-bold text-gray-900 mb-1">Where to next?</h2>
+                <p class="text-xs text-gray-500 mb-6">Enter details below to compile an interactive timeline roadmap.</p>
+
+                <form method="get" class="space-y-4">
+                    <div class="relative">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Location Search</label>
+                        <div class="relative">
+                            <span class="absolute left-3.5 top-3.5 text-gray-400">📍</span>
+                            <input type="text" id="location-input" autocomplete="on" placeholder="Where to? (e.g. Sydney, Paris...)"
+                                   class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm placeholder-gray-400 outline-none transition-all" />
+                        </div>
+
+                        <div id="suggestions-dropdown" class="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto hidden z-50">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Start Date</label>
+                            <input type="date" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm outline-none transition-all" />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">End Date</label>
+                            <input type="date" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm outline-none transition-all" />
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-xl mt-6 text-sm tracking-wide transition-colors active:scale-[0.98]">
+                Start Planning
+            </button>
+        </div>
+
+        <div class="md:col-span-7 bg-gray-100 border border-gray-200 rounded-2xl min-h-[320px] overflow-hidden relative shadow-sm flex flex-col">
+            <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-sm shadow-sm border border-gray-200/60 px-3 py-1 rounded-lg text-xs font-semibold text-gray-700 z-10">
+                🗺️ Map Preview Panel
+            </div>
+            <iframe src="https://maps.google.com/maps?q=Australia&t=&z=4&ie=UTF8&iwloc=&output=embed"
+                    class="w-full flex-1 border-0 m-0 p-0"
+                    allowfullscreen=""
+                    loading="lazy">
+            </iframe>
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <div class="border-b border-gray-200 pb-3">
+            <h2 class="text-2xl font-black tracking-tight text-gray-900">Explore: Top Searched Countries</h2>
+            <p class="text-sm text-gray-500 mt-0.5">Inspirational hubs curated globally by our travel community members.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+
+            <div class="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col h-full">
+                <div class="h-48 bg-slate-200 relative overflow-hidden shrink-0">
+                    <img src="https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=600&q=80"
+                         alt="Spain" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <span class="absolute top-3 right-3 bg-white/90 text-xs font-bold px-2 py-1 rounded-md text-slate-800 shadow-sm">Card 1</span>
+                </div>
+                <div class="p-5 flex-1 flex flex-col justify-between bg-white">
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-900 mb-1">Country: Spain</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">Experience Mediterranean beaches, historic architecture, and vibrant tapas culture across Barcelona and Madrid.</p>
+                    </div>
+                    <span class="text-xs font-semibold text-indigo-600 mt-4 inline-flex items-center group-hover:translate-x-1 transition-transform">
+                        View Route Ideas &rarr;
+                    </span>
+                </div>
+            </div>
+
+            <div class="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col h-full">
+                <div class="h-48 bg-slate-200 relative overflow-hidden shrink-0">
+                    <img src="https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80"
+                         alt="France" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <span class="absolute top-3 right-3 bg-white/90 text-xs font-bold px-2 py-1 rounded-md text-slate-800 shadow-sm">Card 2</span>
+                </div>
+                <div class="p-5 flex-1 flex flex-col justify-between bg-white">
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-900 mb-1">Country: France</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">Explore iconic cafes, world-class art collections, castles along the Loire Valley, and coastal views in Nice.</p>
+                    </div>
+                    <span class="text-xs font-semibold text-indigo-600 mt-4 inline-flex items-center group-hover:translate-x-1 transition-transform">
+                        View Route Ideas &rarr;
+                    </span>
+                </div>
+            </div>
+
+            <div class="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col h-full">
+                <div class="h-48 bg-slate-200 relative overflow-hidden shrink-0">
+                    <img src="https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=600&q=80"
+                         alt="America" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    <span class="absolute top-3 right-3 bg-white/90 text-xs font-bold px-2 py-1 rounded-md text-slate-800 shadow-sm">Card 3</span>
+                </div>
+                <div class="p-5 flex-1 flex flex-col justify-between bg-white">
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-900 mb-1">Country: America</h3>
+                        <p class="text-xs text-gray-500 leading-relaxed">From the bright city lights of New York to scenic drives across California's coast and national park trails.</p>
+                    </div>
+                    <span class="text-xs font-semibold text-indigo-600 mt-4 inline-flex items-center group-hover:translate-x-1 transition-transform">
+                        View Route Ideas &rarr;
+                    </span>
+                </div>
+            </div>
+
+        </div>
+    </section>
+</main>
+
+<script>
+     const Api_Key= "api";
+    const locationInput=document.getElementById("location-input");
+    const dropdown= document.getElementById("suggestions-dropdown");
+
+    let debounceTimer;
+    locationInput.addEventListener('input' , function(){
+        clearTimeout(debounceTimer);
+        const query= this.value.trim();
+        if(query.length < 3)
+        {
+            dropdown.innerHTML='';
+            dropdown.classList.add("hidden");
+
+        }
+        debounceTimer= setTimeout(()=>{
+            fetchSuggestions(query)
+        },300)
+    });
+    async function fetchSuggestions(textInput){
+       const url = 'https://places.googleapis.com/v1/places:autocomplete';
+
+       const payload={
+              "input": "Rom",
+                "locationBias": {
+                    "circle": {
+                       "center": {
+                            "latitude": 37.76999,
+                             "longitude": -122.44696
+                     },
+                      "radius": 500.0
+        }
+      }
+    };
+    try{
+        const response = await fetch(url,{
+            method: 'POST',
+            headers:{
+                 'Content-Type': 'application/json',
+                  'X-Goog-Api-Key': 'api',
+                 'X-Goog-FieldMask': 'suggestions.placePrediction.text'
+             },
+             body: JSON.stringify(payload)
+        });
+        if(!response.ok) throw new Error("Api request failed")
+        const data= await response.json();
+        renderDropdown(data.fetchSuggestions || [] );
+    } catch(error){
+        console.error("Error fetching the response", error)
+    }
+    
+   }
+   function renderDropdown(suggestions){
+    dropdown.innerHTML = '';
+
+        if (suggestions.length === 0) {
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        // Loop through suggestions and construct clickable rows
+        suggestions.forEach(item => {
+            const textValue = item.placePrediction.text.text;
+
+            const row = document.createElement('div');
+            row.className = 'px-4 py-2.5 text-sm text-gray-700 hover:bg-indigo-50 cursor-pointer transition-colors';
+            row.textContent = textValue;
+
+            // When a user clicks a suggestion
+            row.addEventListener('click', () => {
+                locationInput.value = textValue;
+                dropdown.innerHTML = '';
+                dropdown.classList.add('hidden');
+            });
+
+            dropdown.appendChild(row);
+        });
+
+        dropdown.classList.remove('hidden');
+    }
+
+    // Close the suggestions dropdown automatically if the user clicks anywhere else on the screen
+    document.addEventListener('click', function(e) {
+        if (e.target !== locationInput && e.target !== dropdown) {
+            dropdown.innerHTML = '';
+            dropdown.classList.add('hidden');
+        }
+    });
+
+</script>

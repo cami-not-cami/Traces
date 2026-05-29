@@ -1,55 +1,121 @@
-﻿<!DOCTYPE html>
+﻿@inject IConfiguration Configuration
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - Traces</title>
-    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
     <link rel="stylesheet" href="~/Traces.styles.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/output.css" asp-append-version="true" />
-  
 </head>
-<body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">Traces</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+<body class="bg-gray-50 text-gray-900 flex flex-col min-h-screen">
+  
+    <header class="w-full bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+
+                @* logo *@
+                <a class="flex items-center space-x-3 group focus:outline-none" asp-area="" asp-controller="Home" asp-action="Index">
+                    <!-- Premium Neon-Indigo Brand Badge -->
+                    <div class="h-10 px-4 bg-slate-950 rounded-xl flex items-center justify-center border border-slate-800 shadow-lg shadow-indigo-500/10 group-hover:border-indigo-500/50 transition-all duration-300 select-none relative overflow-hidden">
+
+                        <!-- Ambient Background Glow -->
+                        <div class="absolute -right-2 -bottom-2 w-8 h-8 bg-indigo-500/20 rounded-full blur-md group-hover:bg-indigo-500/40 transition-colors"></div>
+
+                        <!-- Custom SVG Map Trace Graphic -->
+                        <svg class="h-10 w-12 text-indigo-400 group-hover:text-indigo-300 transition-colors" viewBox="0 0 55 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <!-- The Map Trail (Dashboard Trace Line) -->
+                            <path d="M2 10C8 10 10 4 16 4C22 4 24 16 30 16C36 16 38 10 44 10"
+                                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3"
+                                  class="animate-\[dash_1s_linear_infinite\]" />
+
+                     
+                            <!-- The Modern Location Pin Endpoint -->
+                            <path class="animate-bounce" d="M46 5C43.2386 5 41 7.23858 41 10C41 13.5 46 19 46 19C46 19 51 13.5 51 10C51 7.23858 48.7614 5 46 5Z"
+                                  fill="#6366f1" stroke="#ffffff" stroke-width="1" />
+                            <circle class="animate-bounce" cx="46" cy="9" r="1.5" fill="white" />
+                        </svg>
+                    </div>
+
+                    <!-- Typography with a subtle color accent on hover -->
+                    <span class="font-black text-xl tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors duration-200">
+                        Traces
+                    </span>
+                </a>
+                <button type="button" onclick="toggleMobileMenu()" class="sm:hidden p-2 rounded-xl text-gray-500 hover:text-gray-900 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all" aria-controls="mobile-menu" aria-expanded="false">
+                    <span class="sr-only">Toggle navigation</span>
+                    <svg id="hamburger-icon" class="h-6 w-6 block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <svg id="close-icon" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
-              
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
-                    </ul>
-                 
-                    <partial name="_LoginPartial" />
+
+                <div class="hidden sm:flex sm:items-center sm:justify-between w-full ml-8">
+                    <nav>
+                        <ul class="flex space-x-2">
+                            <li>
+                                <a class="text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 rounded-xl transition-all" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            </li>
+                            <li>
+                                <a class="text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 rounded-xl transition-all" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                            </li>
+                            <li>
+                                <a class="text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 px-3 py-2 rounded-xl transition-all" asp-area="" asp-controller="Home" asp-action="Trip">Trip</a>
+                            </li>
+                        </ul>
+                    </nav>
+
+                    <div class="flex items-center space-x-4 ml-auto">
+                        <partial name="_LoginPartial" />
+                    </div>
                 </div>
+
             </div>
-        </nav>
+        </div>
+
+        <div class="hidden sm:hidden bg-white border-t border-gray-100" id="mobile-menu">
+            <ul class="px-3 pt-2 pb-4 space-y-1">
+                <li>
+                    <a class="block px-4 py-2.5 rounded-xl text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                </li>
+                <li>
+                    <a class="block px-4 py-2.5 rounded-xl text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                </li>
+                <li>
+                    <a class="block px-4 py-2.5 rounded-xl text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors" asp-area="" asp-controller="Home" asp-action="Trip">Trip</a>
+                </li>
+                <li class="pt-4 border-t border-gray-100 px-4">
+                    <partial name="_LoginPartial" />
+                </li>
+            </ul>
+        </div>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex-grow w-full">
+        <main role="main" class="pb-8">
             @RenderBody()
         </main>
     </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2026 - Traces - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-        </div>
+    <footer class="w-full  bg-white border-t border-gray-200 mt-20 py-6 text-center text-xs text-gray-400">
+        &copy; 2026 Traces, built with Tailwind CSS. All rights reserved.
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
-    <script src="~/tailwindcss.default-theme.js" asp-append-version="true"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=@Configuration["ApiKeys:GoogleApiKey"]"></script>
+    <script>
+        // Simple vanilla JS to replace Bootstrap's mobile toggle functionality
+        document.querySelector('button[aria-controls="mobile-menu"]').addEventListener('click', function() {
+        const menu = document.getElementById('mobile-menu');
+        menu.classList.toggle('hidden');
+        });
+    </script>
+
     @await RenderSectionAsync("Scripts", required: false)
+   
 </body>
+
 </html>
