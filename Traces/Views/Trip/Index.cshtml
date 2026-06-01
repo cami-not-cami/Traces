@@ -1,13 +1,16 @@
-﻿@{
-    
+﻿@inject IConfiguration Configuration
+
+@{
+
     ViewData["Title"] = "Trip Dashboard";
+   
 }
 
 <!-- ROOT WRAPPER: Fixed height full-screen container to maintain three-column layout -->
 <div class="flex h-screen w-full overflow-hidden bg-gray-50 text-gray-800">
 
     <!-- 1. SIDEBAR (RENDERED VIA PARTIAL VIEW) -->
-   
+
     <partial name="_SideMenuPartial.cshtml" />
 
     <!-- 2. MIDDLE DASHBOARD CONTENT CONTAINER -->
@@ -148,15 +151,21 @@
         </div>
     </main>
 
-    <!-- 3. RIGHT HAND SIDE INTERACTIVE MAP FRAME CONTAINER -->
-    <aside class="hidden lg:block w-[45%] bg-gray-200 border-l border-gray-300 relative h-full">
-        <iframe src="https://maps.google.com/maps?q=Sydney,Australia&t=&z=13&ie=UTF8&iwloc=&output=embed"
-                width="100%"
-                height="100%"
-                style="border:0;"
-                allowfullscreen=""
-                loading="lazy"
-                referrerpolicy="no-referrer-when-downgrade">
-        </iframe>
-    </aside>
+    <!-- 3. RIGHT HAND SIDE INTERACTIVE MAP CONTAINER -->
+    <div id="map" class="w-full flex-1 lg:block w-[45%] bg-gray-200 border-l border-gray-300 relative h-full"></div>
+    
 </div>
+<script>
+    let map;
+
+    async function initMap() {
+        const { Map } = await google.maps.importLibrary("maps");
+        map = new Map(document.getElementById("map"), {
+            center: { lat: 47.200, lng: 13.200 },
+            zoom: 8,
+        });
+    }
+</script>
+<script async
+        src="https://maps.googleapis.com/maps/api/js?key=@Configuration["ApiKeys:GoogleApiKey"]&loading=async&callback=initMap">
+</script>

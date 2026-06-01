@@ -15,27 +15,49 @@ namespace Traces.Services
         public GooglePlacesService(IOptions<Settings> settings, HttpClient httpClient)
         {
             _settings = settings.Value;
-            _googleApiKey = _settings.ApiKey;
+            _googleApiKey = _settings.GoogleApiKey;
             _httpClient = httpClient;
         }
-
 
         //Handle api call then save to db
         //refine look up
         //send autocomplete res to front
-        public async Task<IActionResult> GetPlaceDetails(string placeId)
+        public async Task<string> GetPlaceDetails(string placeId)
         {
-            
-            return new JsonResult(new { success = true, data = "Place details would be here" });
+            if (string.IsNullOrWhiteSpace(placeId))
+            {
+                return   "Place ID cannot be null or empty" ;
+            }
+            else
+            {
+                string url = $"https://places.googleapis.com/v1/places/{placeId}";
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+                request.Headers.Add("X-Goog-Api-Key", _googleApiKey);
+                request.Headers.Add("X-Goog-FieldMask", "displayName,formattedAddress,location,photos");
+                try
+                {
+                    var response = await _httpClient.SendAsync(request);
+                    response.EnsureSuccessStatusCode();
+                    var json = await response.Content.ReadAsStringAsync();
+                 
+                    return json;
+
+                }
+                catch (Exception ex)
+                {
+                    return   $"Error calling Google Places API: {ex.Message}" ;
+                }
+            }
         }
-        public async Task<IActionResult> GetAutocomplete(string textInput)
+        public async Task<string> GetAutocomplete(string textInput)
         {
             // Call Google Places API to get autocomplete for the given text input
             // Parse the response and save relevant details to the database
             // Return the details as a JSON response or appropriate format for the frontend
             if(textInput  == null) 
             {
-                    return new JsonResult(new { success = false, message = "Text input cannot be null" });
+                    return "Text input cannot be null";
             }
             else
             {
@@ -44,25 +66,14 @@ namespace Traces.Services
                 var payload = new
                 {
                     input = textInput,
-                    locationBias = new
-                    {
-                        circle = new
-                        {
-                            center = new
-                            {
-                                latitude = 47.200,
-                                longitude = 13.200
-                            },
-                            radius = 5000.0
-                        }
-                    }
+                    
                 };
 
                 try
                 {
                     var request = new HttpRequestMessage(HttpMethod.Post, url);
                     request.Headers.Add("X-Goog-Api-Key", _googleApiKey);
-                    request.Headers.Add("X-Goog-FieldMask", "suggestions.placePrediction.text.text");
+                    request.Headers.Add("X-Goog-FieldMask", "suggestions.placePrediction.text.text,suggestions.placePrediction.placeId");
                     request.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
 
                     var response = await _httpClient.SendAsync(request);
@@ -70,12 +81,12 @@ namespace Traces.Services
 
                     var json = await response.Content.ReadAsStringAsync();
 
-                    return new ContentResult { Content = json, ContentType = "application/json" };
+                    return json;
 
                 }
                 catch (Exception ex)
                 {
-                    return new JsonResult(new { success = false, message = $"Error calling Google Places API: {ex.Message}" });
+                    return   $"Error calling Google Places API: {ex.Message}" ;
                 }
             }
         }
