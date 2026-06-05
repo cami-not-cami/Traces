@@ -73,10 +73,6 @@
       {
          "Name": "[dbo].[UserInfo]",
          "ObjectType": 0
-      },
-      {
-         "Name": "[dbo].[MainViewTables]",
-         "ObjectType": 3
       }
    ],
    "UiHint": null,

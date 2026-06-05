@@ -9,7 +9,7 @@ public partial class Place
 {
     public int PlIdPk { get; set; }
 
-    public int? GooglePlaceId { get; set; }
+    public string GooglePlaceId { get; set; }
 
     public string Name { get; set; }
 

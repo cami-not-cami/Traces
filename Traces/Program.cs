@@ -23,6 +23,12 @@ namespace Traces
             
             builder.Services.AddHttpClient<GoogleMapsServices>();
             builder.Services.AddHttpClient<GooglePlacesService>();
+            builder.Services.AddDistributedMemoryCache();
+            builder.Services.AddSession(options => {
+                options.IdleTimeout = TimeSpan.FromMinutes(20);
+                options.Cookie.HttpOnly = true;
+                options.Cookie.IsEssential = true;
+            });
 
 
             builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
@@ -50,6 +56,7 @@ namespace Traces
             app.UseStaticFiles();
 
             app.UseRouting();
+            app.UseSession();
 
             app.UseAuthorization();
 
@@ -57,7 +64,7 @@ namespace Traces
                 name: "default",
                 pattern: "{controller=Home}/{action=Index}/{id?}");
             app.MapRazorPages();
-
+            
             app.Run();
         }
     }

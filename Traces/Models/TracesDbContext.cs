@@ -15,8 +15,6 @@ public partial class TracesDbContext : DbContext
 
     public virtual DbSet<Checklist> Checklists { get; set; }
 
-    
-
     public virtual DbSet<Note> Notes { get; set; }
 
     public virtual DbSet<Place> Places { get; set; }
@@ -60,7 +58,6 @@ public partial class TracesDbContext : DbContext
                 .HasConstraintName("FK_Checklist_TripActivities");
         });
 
-     
         modelBuilder.Entity<Note>(entity =>
         {
             entity.HasKey(e => e.NoIdPk).HasName("PK__Notes__14F9C02A6FC3F9F8");
@@ -76,8 +73,6 @@ public partial class TracesDbContext : DbContext
         modelBuilder.Entity<Place>(entity =>
         {
             entity.HasKey(e => e.PlIdPk).HasName("PK__Places__C9D6A4C793E0371A");
-
-            entity.HasIndex(e => e.GooglePlaceId, "UQ__Places__A19E0A9009A7C677").IsUnique();
 
             entity.Property(e => e.PlIdPk).ValueGeneratedNever();
             entity.Property(e => e.City).HasMaxLength(100);
