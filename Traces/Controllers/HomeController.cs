@@ -29,10 +29,7 @@ namespace Traces.Controllers
         {
             return View();
         }
-        //public IActionResult Trip()
-        //{
-        //    return RedirectToAction("Index", "TripPlanner");
-        //}
+       
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
@@ -45,22 +42,20 @@ namespace Traces.Controllers
             return Content(jsonResponse, "application/json");
         }
         [HttpPost]
-        public async Task<IActionResult> SwitchToTripPlanning(string placeId, DateTime? startDate, DateTime? endDate)
+        public async Task<IActionResult> SwitchToTripPlanning(string placeId, DateOnly? startDate, DateOnly? endDate)
         {
-            if (User.Identity.IsAuthenticated == false)
-            {
-                Guid anonymGuid = Guid.NewGuid();
-            }
-
+           
             if (string.IsNullOrEmpty(placeId))
             {
                 ModelState.AddModelError("PlaceId", "Please select a valid location.");
                 return View("Index");
             }
-            TempData["placeId"] = placeId; 
-            TempData["startDate"] = startDate?.ToString("yyyy-MM-dd"); 
-            TempData["endDate"] = endDate?.ToString("yyyy-MM-dd");
-            return RedirectToAction("Index", "Trip");
+            return RedirectToAction("Index", "Trip", new
+            {
+                placeId,
+                startDate = startDate?.ToString("yyyy-MM-dd"),
+                endDate = endDate?.ToString("yyyy-MM-dd")
+            });
         }
     }
 }

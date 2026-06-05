@@ -3,7 +3,7 @@
    "ContextClassName": "TracesDbContext",
    "ContextNamespace": null,
    "FilterSchemas": false,
-   "IncludeConnectionString": true,
+   "IncludeConnectionString": false,
    "IrregularWords": null,
    "MinimumProductVersion": "2.6.1382",
    "ModelNamespace": null,
@@ -73,6 +73,10 @@
       {
          "Name": "[dbo].[UserInfo]",
          "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[MainViewTables]",
+         "ObjectType": 3
       }
    ],
    "UiHint": null,

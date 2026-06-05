@@ -1,5 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using Traces.Models;
 using Traces.Services;
 
@@ -16,85 +17,66 @@ namespace Traces.Controllers
             _googlePlacesService = googlePlacesService;
         }
         // GET: TripController
-        public async Task<ActionResult> Index()
+        public async Task<ActionResult> Index(string placeId, string startDate, string endDate)
         {
-            ViewBag.placeId = TempData["placeId"]?.ToString();
-            ViewBag.startDate = TempData["startDate"]?.ToString();
-            ViewBag.endDate = TempData["endDate"]?.ToString();
-            var details =  await _googlePlacesService.GetPlaceDetails(ViewBag.placeId);
-            // based on the details center the map, add pinpoint and start showing nearby places
-            
 
-            return View();
+            if (User.Identity.IsAuthenticated == false)
+            {
+                Guid anonymGuid = Guid.NewGuid();
+            }
+
+            if (string.IsNullOrEmpty(placeId))
+                return RedirectToAction("Index", "Home");
+
+            var json = await _googlePlacesService.GetPlaceDetails(placeId);
+            var googlePlace = JsonSerializer.Deserialize<GooglePlaceResponse>(json);
+
+            var place = new PlaceViewModel
+            {
+                Name = googlePlace.DisplayName.Text,
+                Latitude = (decimal)googlePlace.Location.Latitude,
+                Longitude = (decimal)googlePlace.Location.Longitude,
+                FormattedAddress = googlePlace.FormattedAddress,
+            };
+
+            var vm = new CreateTripViewModel
+            {
+                Title = $"Trip to {place.Name}",
+                StartDate = DateOnly.TryParse(startDate, out var start) ? start : null,
+                EndDate = DateOnly.TryParse(endDate, out var end) ? end : null,
+                Budget = 0.0d,
+                Latitude = place.Latitude,
+                Longitude = place.Longitude,
+                PlacesToVisit = new List<PlaceViewModel> { place },
+            };
+            return View(vm);
         }
 
         // GET: TripController/Details/5
-        public ActionResult Details(int id)
+        public async Task<ActionResult> Details(int id)
         {
-            return View();
+            var trip = await _context.Trips.FirstOrDefaultAsync(t => t.TrIdPk == id);
+
+            if (trip == null) return NotFound();
+
+            var days = await _context.TripDays
+                .Where(d => d.TripFk == id)
+                .OrderBy(d => d.DayNumber)
+                .ToListAsync();
+
+            var vm = new CreateTripViewModel
+            {
+                TripId = trip.TrIdPk,
+                Title = trip.Title ?? "",
+                Description = trip.Description ?? "",
+                StartDate = trip.StartDate,
+                EndDate = trip.EndDate,
+                Budget = trip.Budget
+            };
+
+            return View(vm);
         }
 
-        // GET: TripController/Create
-        public ActionResult Create()
-        {
-            return View();
-        }
-
-        // POST: TripController/Create
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Create(IFormCollection collection)
-        {
-            try
-            {
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
-        }
-
-        // GET: TripController/Edit/5
-        public ActionResult Edit(int id)
-        {
-            return View();
-        }
-
-        // POST: TripController/Edit/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
-        {
-            try
-            {
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
-        }
-
-        // GET: TripController/Delete/5
-        public ActionResult Delete(int id)
-        {
-            return View();
-        }
-
-        // POST: TripController/Delete/5
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult Delete(int id, IFormCollection collection)
-        {
-            try
-            {
-                return RedirectToAction(nameof(Index));
-            }
-            catch
-            {
-                return View();
-            }
-        }
+        
     }
 }

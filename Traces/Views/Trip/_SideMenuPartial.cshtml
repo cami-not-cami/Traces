@@ -1,69 +1,174 @@
-﻿<aside class="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex shrink-0 h-full">
-    <!-- Brand / Top -->
-    <div class="h-16 flex items-center px-6 border-b border-gray-100">
-        <div class="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xs mr-2">W</div>
-        <span class="font-bold text-sm text-gray-600">Saved</span>
+@model CreateTripViewModel
+
+<aside id="sidebar" class="fixed md:relative inset-y-0 left-0 z-40 md:z-auto w-64 bg-slate-50 border-r border-slate-200/80 flex flex-col -translate-x-full md:translate-x-0 shrink-0 h-full transition-all duration-300 ease-in-out">
+
+    <!-- Brand -->
+    <div class="h-16 flex items-center px-6 border-b border-slate-200/60 sidebar-header transition-all duration-300">
+        <div class="w-8 h-8 bg-rose-500 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm shadow-rose-500/20">W</div>
+        <span class="font-bold text-sm text-slate-700 sidebar-text ml-2">Saved</span>
     </div>
 
-    <!-- Navigation Sections -->
-    <nav class="flex-1 overflow-y-auto py-4">
-        <!-- Overview -->
-        <div class="mb-6">
-            <button class="w-full flex items-center px-4 py-2 bg-gray-800 text-white font-medium text-sm rounded-r-full">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                Overview
-            </button>
-            <ul class="mt-2 space-y-1">
-                <li><a href="#" class="block px-10 py-1.5 text-sm font-medium text-gray-900">Explore</a></li>
-                <li><a href="#" class="block px-10 py-1.5 text-sm text-gray-500 hover:bg-gray-50">Notes</a></li>
-                <li><a href="#" class="block px-10 py-1.5 text-sm text-gray-500 hover:bg-gray-50">Places to visit</a></li>
-                <li><a href="#" class="block px-10 py-1.5 text-sm text-gray-500 hover:bg-gray-50">Untitled</a></li>
-            </ul>
-        </div>
-
-        <!-- Itinerary -->
-        <div class="mb-6">
-            <button class="w-full flex items-center px-4 py-2 text-gray-700 font-medium text-sm hover:bg-gray-50 rounded-r-full">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                Itinerary
-            </button>
-            <ul class="mt-2 space-y-2">
-                <li>
-                    <a href="#" class="block px-10 py-1 hover:bg-gray-50">
-                        <div class="text-sm font-medium text-gray-700">Thu 7/5</div>
-                        <div class="text-xs text-gray-400">Lord Dudley Hotel</div>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="block px-10 py-1 hover:bg-gray-50">
-                        <div class="text-sm font-medium text-gray-700">Fri 8/5</div>
-                    </a>
-                </li>
-                <li>
-                    <a href="#" class="block px-10 py-1 hover:bg-gray-50">
-                        <div class="text-sm font-medium text-gray-700">Sat 9/5</div>
-                    </a>
-                </li>
-            </ul>
-        </div>
-
-        <!-- Budget -->
-        <div>
-            <button class="w-full flex items-center px-4 py-2 text-gray-700 font-medium text-sm hover:bg-gray-50 rounded-r-full">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                Budget
-            </button>
-            <ul class="mt-2 space-y-1">
-                <li><a href="#" class="block px-10 py-1.5 text-sm text-gray-500 hover:bg-gray-50">View</a></li>
-            </ul>
-        </div>
+    <!-- Nav Sections -->
+    <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+        <partial name="_SideOverviewPartial" model="Model" />
+        <partial name="_SideItineraryPartial" model="Model.Days" />
+        <partial name="_SideBudgetPartial" model="Model.Budget" />
     </nav>
 
-    <!-- Hide Sidebar Footer -->
-    <div class="p-4 border-t border-gray-100 mt-auto">
-        <button class="flex items-center text-gray-500 text-sm hover:text-gray-700">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
-            Hide sidebar
+    <!-- Footer -->
+    <div class="p-4 border-t border-slate-200/60 mt-auto flex justify-center">
+        <button onclick="toggleSidebar()" class="w-[calc(100%-24px)] mx-3 flex items-center px-3.5 py-2.5 text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 rounded-xl sidebar-toggle-btn transition-all duration-300">
+            <svg class="w-4 h-4 mr-2 shrink-0 sidebar-toggle-icon transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+            <span class="sidebar-toggle-text font-medium text-sm">Hide sidebar</span>
         </button>
     </div>
 </aside>
+
+<script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const isMobile = window.innerWidth < 768;
+
+        if (isMobile) {
+            // Mobile behavior: Slide-out drawer
+            const isOpen = sidebar.classList.contains('translate-x-0');
+            if (isOpen) {
+                sidebar.classList.remove('translate-x-0');
+                sidebar.classList.add('-translate-x-full');
+                if (overlay) overlay.classList.add('hidden');
+            } else {
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('translate-x-0');
+                if (overlay) overlay.classList.remove('hidden');
+            }
+        } else {
+            // Desktop behavior: Collapse to icon-only sidebar
+            const isCollapsed = sidebar.classList.contains('w-20');
+
+            if (isCollapsed) {
+                // Expand
+                sidebar.classList.remove('w-20');
+                sidebar.classList.add('w-64');
+
+                // Header
+                const header = sidebar.querySelector('.sidebar-header');
+                header.classList.remove('px-0', 'justify-center');
+                header.classList.add('px-6');
+
+                // Hide sidebar footer button
+                const toggleBtn = sidebar.querySelector('.sidebar-toggle-btn');
+                toggleBtn.classList.remove('w-12', 'h-12', 'justify-center', 'mx-auto');
+                toggleBtn.classList.add('px-3.5', 'mx-3', 'w-[calc(100%-24px)]');
+
+                const toggleIcon = sidebar.querySelector('.sidebar-toggle-icon');
+                toggleIcon.classList.remove('rotate-180');
+                toggleIcon.classList.add('mr-2');
+
+                // Sublists and text elements
+                sidebar.querySelectorAll('.sidebar-text, .sidebar-sublist, .sidebar-toggle-text').forEach(el => {
+                    el.classList.remove('hidden');
+                });
+
+                // Buttons
+                sidebar.querySelectorAll('.sidebar-btn').forEach(btn => {
+                    btn.classList.remove('justify-center', 'w-12', 'h-12', 'mx-auto');
+                    btn.classList.add('px-3.5', 'mx-3', 'w-[calc(100%-24px)]');
+
+                    const svg = btn.querySelector('svg');
+                    if (svg) svg.classList.add('mr-2');
+                });
+            } else {
+                // Collapse
+                sidebar.classList.remove('w-64');
+                sidebar.classList.add('w-20');
+
+                // Header
+                const header = sidebar.querySelector('.sidebar-header');
+                header.classList.remove('px-6');
+                header.classList.add('px-0', 'justify-center');
+
+                // Hide sidebar footer button
+                const toggleBtn = sidebar.querySelector('.sidebar-toggle-btn');
+                toggleBtn.classList.remove('px-3.5', 'mx-3', 'w-[calc(100%-24px)]');
+                toggleBtn.classList.add('w-12', 'h-12', 'justify-center', 'mx-auto');
+
+                const toggleIcon = sidebar.querySelector('.sidebar-toggle-icon');
+                toggleIcon.classList.add('rotate-180');
+                toggleIcon.classList.remove('mr-2');
+
+                // Sublists and text elements
+                sidebar.querySelectorAll('.sidebar-text, .sidebar-sublist, .sidebar-toggle-text').forEach(el => {
+                    el.classList.add('hidden');
+                });
+
+                // Buttons
+                sidebar.querySelectorAll('.sidebar-btn').forEach(btn => {
+                    btn.classList.remove('px-3.5', 'mx-3', 'w-[calc(100%-24px)]');
+                    btn.classList.add('justify-center', 'w-12', 'h-12', 'mx-auto');
+
+                    const svg = btn.querySelector('svg');
+                    if (svg) svg.classList.remove('mr-2');
+                });
+            }
+        }
+    }
+
+    // Window resize listener to reset sidebar states smoothly
+    window.addEventListener('resize', () => {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        if (!sidebar) return;
+
+        if (window.innerWidth >= 768) {
+            // Reset mobile drawer classes when moving to desktop
+            sidebar.classList.remove('-translate-x-full', 'translate-x-0');
+            if (overlay) overlay.classList.add('hidden');
+
+            // Re-apply desktop defaults if it was collapsed/expanded
+            const isCollapsed = sidebar.classList.contains('w-20');
+            if (!isCollapsed) {
+                sidebar.classList.add('w-64');
+            }
+        } else {
+            // Reset desktop collapse classes when moving to mobile
+            sidebar.classList.remove('w-20');
+            sidebar.classList.add('w-64');
+
+            const header = sidebar.querySelector('.sidebar-header');
+            if (header) {
+                header.classList.remove('px-0', 'justify-center');
+                header.classList.add('px-6');
+            }
+
+            const toggleBtn = sidebar.querySelector('.sidebar-toggle-btn');
+            if (toggleBtn) {
+                toggleBtn.classList.remove('w-12', 'h-12', 'justify-center', 'mx-auto');
+                toggleBtn.classList.add('px-3.5', 'mx-3', 'w-[calc(100%-24px)]');
+            }
+
+            const toggleIcon = sidebar.querySelector('.sidebar-toggle-icon');
+            if (toggleIcon) {
+                toggleIcon.classList.remove('rotate-180');
+                toggleIcon.classList.add('mr-2');
+            }
+
+            sidebar.querySelectorAll('.sidebar-text, .sidebar-sublist, .sidebar-toggle-text').forEach(el => {
+                el.classList.remove('hidden');
+            });
+
+            sidebar.querySelectorAll('.sidebar-btn').forEach(btn => {
+                btn.classList.remove('justify-center', 'w-12', 'h-12', 'mx-auto');
+                btn.classList.add('px-3.5', 'mx-3', 'w-[calc(100%-24px)]');
+                const svg = btn.querySelector('svg');
+                if (svg) svg.classList.add('mr-2');
+            });
+
+            // Make sure it starts offscreen on mobile
+            sidebar.classList.add('-translate-x-full');
+            if (overlay) overlay.classList.add('hidden');
+        }
+    });
+</script>

@@ -8,16 +8,14 @@ namespace Traces.Models;
 
 public partial class TracesDbContext : DbContext
 {
-    public TracesDbContext()
-    {
-    }
-
     public TracesDbContext(DbContextOptions<TracesDbContext> options)
         : base(options)
     {
     }
 
     public virtual DbSet<Checklist> Checklists { get; set; }
+
+    
 
     public virtual DbSet<Note> Notes { get; set; }
 
@@ -45,8 +43,6 @@ public partial class TracesDbContext : DbContext
 
     public virtual DbSet<UserInfo> UserInfos { get; set; }
 
-
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Checklist>(entity =>
@@ -64,6 +60,7 @@ public partial class TracesDbContext : DbContext
                 .HasConstraintName("FK_Checklist_TripActivities");
         });
 
+     
         modelBuilder.Entity<Note>(entity =>
         {
             entity.HasKey(e => e.NoIdPk).HasName("PK__Notes__14F9C02A6FC3F9F8");

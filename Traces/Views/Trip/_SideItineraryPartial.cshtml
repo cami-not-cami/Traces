@@ -1,0 +1,27 @@
+@model List<TripDayViewModel>
+
+<div class="mb-6">
+    <button class="w-[calc(100%-24px)] mx-3 flex items-center px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-semibold text-sm rounded-xl sidebar-btn transition-all duration-300">
+        <svg class="w-4 h-4 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+        <span class="sidebar-text">Itinerary</span>
+    </button>
+    <ul class="mt-1.5 space-y-1 sidebar-sublist">
+        @foreach (var day in Model)
+        {
+            <li>
+                <a href="#day-@day.TripDayId" class="block mx-3 pl-10 pr-4 py-2 hover:bg-slate-200/55 hover:text-indigo-600 rounded-xl transition-all">
+                    <div class="text-sm font-semibold text-slate-700">@day.DayLabel</div>
+                    @{
+                        var firstPlace = day.Activities.FirstOrDefault()?.Place?.Name;
+                    }
+                    @if (firstPlace != null)
+                    {
+                        <div class="text-xs text-slate-400 mt-0.5 font-normal">@firstPlace</div>
+                    }
+                </a>
+            </li>
+        }
+    </ul>
+</div>

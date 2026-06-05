@@ -4,11 +4,7 @@ namespace Traces.Services
 {
     public class GoogleMapsServices
     {
-        public async Task<IActionResult> InitialiseMaps(string apiKey)
-        {
-      
-            return new JsonResult(new { success = true, data = "" });
-        }
+    
         public async Task<IActionResult> PlacePins(double latitude, double longitude)
         {
             //places a pin on the map

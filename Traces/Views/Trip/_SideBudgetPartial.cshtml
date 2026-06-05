@@ -1,0 +1,24 @@
+@model double?
+
+<div>
+    <button class="w-[calc(100%-24px)] mx-3 flex items-center px-3.5 py-2.5 text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 font-semibold text-sm rounded-xl sidebar-btn transition-all duration-300">
+        <svg class="w-4 h-4 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+        <span class="sidebar-text">Budget</span>
+    </button>
+    <ul class="mt-1.5 space-y-0.5 sidebar-sublist">
+        <li>
+            <a href="#budget" class="block mx-3 pl-10 pr-4 py-1.5 text-sm text-slate-550 hover:text-indigo-600 hover:bg-slate-200/55 rounded-xl transition-all">
+                @if (Model.HasValue)
+                {
+                    <span class="font-semibold text-slate-700">@Model.Value.ToString("N2") €</span>
+                }
+                else
+                {
+                    <span class="sidebar-text font-medium">View budget</span>
+                }
+            </a>
+        </li>
+    </ul>
+</div>
