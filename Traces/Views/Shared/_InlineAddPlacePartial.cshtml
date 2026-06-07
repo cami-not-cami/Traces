@@ -1,0 +1,77 @@
+@model dynamic
+@{
+    int dayNumber = Model.DayNumber;
+    string dayLabel = Model.DayLabel;
+    int tripId = Model.TripId;
+    string tripTitle = Model.TripTitle ?? "";
+    string tripStartDate = Model.TripStartDate ?? "";
+    string tripEndDate = Model.TripEndDate ?? "";
+}
+
+<div class="inline-add-container mt-4">
+    <!-- Trigger Button -->
+    <button type="button" onclick="showInlineForm(this)" class="inline-flex items-center space-x-2 text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/50 border border-dashed border-indigo-200 rounded-xl px-4 py-2 transition-all">
+        <span>+ Add place</span>
+    </button>
+
+    <!-- Hidden Form -->
+    <form asp-controller="Trip" asp-action="AddActivityToTrip" method="post" class="hidden inline-add-form bg-slate-50 border border-slate-200/80 rounded-2xl p-5 mt-3 space-y-3 relative shadow-sm text-left">
+        <input type="hidden" name="TripId" value="@tripId" />
+        <input type="hidden" name="TripTitle" value="@tripTitle" />
+        <input type="hidden" name="TripStartDate" value="@tripStartDate" />
+        <input type="hidden" name="TripEndDate" value="@tripEndDate" />
+        <input type="hidden" name="DayNumber" value="@dayNumber" />
+        
+        <!-- Google API auto-populated fields -->
+        <input type="hidden" name="GooglePlaceId" />
+        <input type="hidden" name="Latitude" />
+        <input type="hidden" name="Longitude" />
+        <input type="hidden" name="FormattedAddress" />
+
+        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Add place to @dayLabel</div>
+
+        <div class="grid grid-cols-1 gap-3">
+            <!-- Place Search Input (Google Autocomplete Hooked) -->
+            <div>
+                <input type="text" name="PlaceName" class="day-autocomplete w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" required placeholder="Search place (e.g. restaurant, museum, park)..." />
+            </div>
+
+            <!-- Optional details -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Category</label>
+                    <select name="Category" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                        <option value="Attraction">Attraction</option>
+                        <option value="Food">Food / Dining</option>
+                        <option value="Lodging">Lodging</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Transit">Transit</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Start Time</label>
+                    <input type="time" name="StartTime" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+                </div>
+                <div>
+                    <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">End Time</label>
+                    <input type="time" name="EndTime" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Notes</label>
+                <textarea name="Notes" placeholder="Add booking details, ticket numbers, costs..." rows="1" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400"></textarea>
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex justify-end space-x-2 pt-2 border-t border-slate-200/50">
+            <button type="button" onclick="hideInlineForm(this)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+                Cancel
+            </button>
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:shadow-lg hover:shadow-indigo-500/20 transition-all">
+                Add
+            </button>
+        </div>
+    </form>
+</div>

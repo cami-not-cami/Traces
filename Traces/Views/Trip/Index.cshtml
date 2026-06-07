@@ -35,6 +35,11 @@
                 {
                     <form asp-controller="Trip" asp-action="Save" method="post" class="inline m-0">
                         <input type="hidden" asp-for="TripId" />
+                        <input type="hidden" asp-for="Title" />
+                        <input type="hidden" asp-for="Description" />
+                        <input type="hidden" asp-for="StartDate" />
+                        <input type="hidden" asp-for="EndDate" />
+                        <input type="hidden" asp-for="Budget" />
                         <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-500/20 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center transition-all">
                             <svg class="w-4 h-4 sm:mr-1.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -56,7 +61,25 @@
         <!-- Main Body Scroll Area -->
         <div class="flex-1 overflow-y-auto">
             <!-- Banner Cover -->
-            <div class="h-64 bg-slate-200 w-full bg-cover bg-center relative" style="background-image: url('https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?auto=format&fit=crop&w=1600&q=80');">
+            @{
+                string coverUrl;
+                if (ViewBag.CoverPhoto != null)
+                {
+                    coverUrl = $"https://places.googleapis.com/v1/{ViewBag.CoverPhoto}/media?key={Configuration["ApiKeys:GoogleApiKey"]}&maxWidthPx=1600";
+                }
+                else
+                {
+                    var query = Model.Title;
+                    if (query.StartsWith("Trip to ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        query = query.Substring(8);
+                    }
+                    coverUrl = !string.IsNullOrEmpty(query)
+                        ? $"https://images.unsplash.com/featured/1600x900/?{Uri.EscapeDataString(query)},travel"
+                        : "https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?auto=format&fit=crop&w=1600&q=80";
+                }
+            }
+            <div class="h-64 bg-slate-200 w-full bg-cover bg-center relative" style="background-image: url('@coverUrl');">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent"></div>
             </div>
 
@@ -89,94 +112,16 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- GLOBAL "ADD TO PLAN" FORM CARD (ALWAYS VISIBLE) -->
-                <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-6 mb-12 shadow-sm">
-                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        Add to Plan
-                    </h3>
-
-                    <form asp-controller="Trip" asp-action="AddActivityToTrip" method="post" id="global-add-form" class="space-y-4">
-                        <input type="hidden" name="TripId" value="@Model.TripId" />
-                        
-                        <!-- Google API auto-populated fields -->
-                        <input type="hidden" name="GooglePlaceId" />
-                        <input type="hidden" name="Latitude" />
-                        <input type="hidden" name="Longitude" />
-                        <input type="hidden" name="FormattedAddress" />
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <!-- Place Search Input (Google Autocomplete Hooked) -->
-                            <div class="md:col-span-2">
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Search Place</label>
-                                <input type="text" name="PlaceName" id="global-autocomplete" required placeholder="Search restaurants, tourist attractions, parks..." class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" />
-                            </div>
-
-                            <!-- Target Day Dropdown Selection -->
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Target Day</label>
-                                <select name="DayNumber" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                    <option value="0">Unscheduled (Places to Visit)</option>
-                                    @if (Model.Days != null)
-                                    {
-                                        foreach (var day in Model.Days)
-                                        {
-                                            <option value="@day.DayNumber">@day.DayLabel</option>
-                                        }
-                                    }
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <!-- Category Select -->
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Category</label>
-                                <select name="Category" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                    <option value="Attraction">Attraction</option>
-                                    <option value="Food">Food / Dining</option>
-                                    <option value="Lodging">Lodging</option>
-                                    <option value="Shopping">Shopping</option>
-                                    <option value="Transit">Transit</option>
-                                </select>
-                            </div>
-
-                            <!-- Start / End Times -->
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Start Time</label>
-                                <input type="time" name="StartTime" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
-                            </div>
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">End Time</label>
-                                <input type="time" name="EndTime" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
-                            </div>
-                        </div>
-
-                        <!-- Notes Area -->
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Notes</label>
-                            <textarea name="Notes" placeholder="Add entry tickets cost, hotel booking links, reservation details..." rows="2" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400"></textarea>
-                        </div>
-
-                        <!-- Submit Button -->
-                        <div class="flex justify-end pt-2">
-                            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:shadow-lg hover:shadow-indigo-500/20 transition-all">
-                                Add to Trip Plan
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
+                
                 <!-- 1. PLACES TO VISIT (UNSCHEDULED BUCKET) -->
-                @if (Model.PlacesToVisit != null && Model.PlacesToVisit.Count > 0)
-                {
-                    <div class="mb-12">
-                        <h3 class="text-lg font-extrabold text-slate-900 mb-4 flex items-center">
-                            <svg class="w-5.5 h-5.5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                            Places to Visit (Unscheduled)
-                        </h3>
-                        <div class="flex flex-wrap gap-3">
+                <div class="mb-12">
+                    <h3 class="text-lg font-extrabold text-slate-900 mb-4 flex items-center">
+                        <svg class="w-5.5 h-5.5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Places to Visit (Unscheduled)
+                    </h3>
+                    @if (Model.PlacesToVisit != null && Model.PlacesToVisit.Count > 0)
+                    {
+                        <div class="flex flex-wrap gap-3 mb-4">
                             @foreach (var place in Model.PlacesToVisit)
                             {
                                 <div class="bg-indigo-50/50 hover:bg-indigo-55 border border-indigo-100 rounded-xl px-4 py-2.5 text-sm font-semibold text-indigo-700 flex items-center transition-all">
@@ -184,8 +129,21 @@
                                 </div>
                             }
                         </div>
-                    </div>
-                }
+                    }
+                    else
+                    {
+                        <p class="text-xs text-slate-400 mb-4 italic">No unscheduled places added yet.</p>
+                    }
+
+                    @await Html.PartialAsync("_InlineAddPlacePartial", new { 
+                        DayNumber = 0, 
+                        DayLabel = "Unscheduled", 
+                        TripId = Model.TripId, 
+                        TripTitle = Model.Title, 
+                        TripStartDate = Model.StartDate?.ToString("yyyy-MM-dd"), 
+                        TripEndDate = Model.EndDate?.ToString("yyyy-MM-dd") 
+                    })
+                </div>
 
                 <!-- 2. DYNAMIC DAILY ITINERARY -->
                 <div class="mb-14">
@@ -271,6 +229,16 @@
                                             }
                                         }
                                     </div>
+
+                                    <!-- Inline Add Place Form for this day -->
+                                    @await Html.PartialAsync("_InlineAddPlacePartial", new { 
+                                        DayNumber = day.DayNumber, 
+                                        DayLabel = day.DayLabel, 
+                                        TripId = Model.TripId, 
+                                        TripTitle = Model.Title, 
+                                        TripStartDate = Model.StartDate?.ToString("yyyy-MM-dd"), 
+                                        TripEndDate = Model.EndDate?.ToString("yyyy-MM-dd") 
+                                    })
                                 </div>
                             }
                         </div>
@@ -347,20 +315,58 @@
 
 <script>
     let map;
-    const lat = @(Model.Latitude?.ToString("G", System.Globalization.CultureInfo.InvariantCulture) ?? "0");
-    const lng = @(Model.Longitude?.ToString("G", System.Globalization.CultureInfo.InvariantCulture) ?? "0");
+    const lat = @(Model.Latitude?.ToString("G", System.Globalization.CultureInfo.InvariantCulture) ?? "47.200");
+    const lng = @(Model.Longitude?.ToString("G", System.Globalization.CultureInfo.InvariantCulture) ?? "13.200");
+    const hasCoords = @(Model.Latitude.HasValue && Model.Longitude.HasValue ? "true" : "false");
+
+    const places = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        (Model.PlacesToVisit ?? new List<PlaceViewModel>())
+        .Concat((Model.Days ?? new List<TripDayViewModel>()).SelectMany(d => d.Activities ?? new List<TripActivityViewModel>()).Where(a => a.Place != null).Select(a => a.Place))
+        .Where(p => p != null && p.Latitude.HasValue && p.Longitude.HasValue)
+        .Select(p => new {
+            name = p.Name,
+            lat = (double)p.Latitude.Value,
+            lng = (double)p.Longitude.Value,
+            category = p.PrimaryCategory
+        })
+    ));
 
     async function initMap() {
         const { Map } = await google.maps.importLibrary("maps");
         map = new Map(document.getElementById("map"), {
             center: { lat: lat, lng: lng },
-            zoom: 13,
+            zoom: hasCoords ? 13 : 8,
         });
 
-        // Initialize autocomplete for the global add form
-        const globalInput = document.getElementById('global-autocomplete');
-        if (globalInput) {
-            const autocomplete = new google.maps.places.Autocomplete(globalInput, {
+        // Add markers for all places
+        const bounds = new google.maps.LatLngBounds();
+        let hasMarkers = false;
+
+        const infowindow = new google.maps.InfoWindow();
+
+        places.forEach(p => {
+            const marker = new google.maps.Marker({
+                position: { lat: p.lat, lng: p.lng },
+                map: map,
+                title: p.name
+            });
+
+            marker.addListener("click", () => {
+                infowindow.setContent(`<div class="p-2 font-sans font-semibold text-slate-800 text-xs">${p.name}</div>`);
+                infowindow.open(map, marker);
+            });
+
+            bounds.extend(marker.getPosition());
+            hasMarkers = true;
+        });
+
+        if (hasMarkers && places.length > 1) {
+            map.fitBounds(bounds);
+        }
+
+        // Initialize autocomplete for all inline day forms
+        document.querySelectorAll('.day-autocomplete').forEach(input => {
+            const autocomplete = new google.maps.places.Autocomplete(input, {
                 fields: ['place_id', 'geometry', 'name', 'formatted_address', 'types'],
                 types: ['establishment', 'geocode']
             });
@@ -369,7 +375,7 @@
                 const place = autocomplete.getPlace();
                 if (!place.geometry) return;
 
-                const form = document.getElementById('global-add-form');
+                const form = input.closest('form');
                 if (form) {
                     form.querySelector('input[name="GooglePlaceId"]').value = place.place_id ?? '';
                     form.querySelector('input[name="Latitude"]').value = place.geometry.location.lat();
@@ -392,7 +398,27 @@
                     }
                 }
             });
-        }
+        });
+    }
+
+    function showInlineForm(button) {
+        // Hide trigger button, show form
+        const container = button.closest('.inline-add-container');
+        button.classList.add('hidden');
+        const form = container.querySelector('.inline-add-form');
+        form.classList.remove('hidden');
+        // Focus the autocomplete input
+        const input = form.querySelector('.day-autocomplete');
+        if (input) input.focus();
+    }
+
+    function hideInlineForm(button) {
+        // Hide form, show trigger button
+        const container = button.closest('.inline-add-container');
+        const form = container.querySelector('.inline-add-form');
+        form.classList.add('hidden');
+        const trigger = container.querySelector('button');
+        trigger.classList.remove('hidden');
     }
 </script>
 <script async

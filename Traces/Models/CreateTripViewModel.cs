@@ -63,7 +63,7 @@ namespace Traces.Models
     public class PlaceViewModel
     {
         public int PlaceId { get; set; }
-        public int? GooglePlaceId { get; set; }
+        public string? GooglePlaceId { get; set; }
         public string Name { get; set; }
         public decimal? Latitude { get; set; }
         public decimal? Longitude { get; set; }
