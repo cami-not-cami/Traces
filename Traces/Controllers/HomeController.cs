@@ -35,10 +35,15 @@ namespace Traces.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
-        public async Task<IActionResult> Autocomplete(string textInput)
+        public async Task<IActionResult> Autocomplete(string textInput, double? latitude = null, double? longitude = null)
         {
          
-            var jsonResponse = await _googlePlacesService.GetAutocomplete(textInput);
+            var jsonResponse = await _googlePlacesService.GetAutocomplete(textInput, latitude, longitude);
+            return Content(jsonResponse, "application/json");
+        }
+        public async Task<IActionResult> PlaceDetails(string placeId)
+        {
+            var jsonResponse = await _googlePlacesService.GetPlaceDetails(placeId);
             return Content(jsonResponse, "application/json");
         }
         [HttpPost]

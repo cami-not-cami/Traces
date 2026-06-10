@@ -70,6 +70,7 @@ namespace Traces.Models
         public string PrimaryCategory { get; set; }
         public string FormattedAddress { get; set; }
         public string City { get; set; }
+        public string? CoverPhoto { get; set; }
     }
 }
 

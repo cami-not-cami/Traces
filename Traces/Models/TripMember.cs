@@ -9,7 +9,7 @@ public partial class TripMember
 {
     public int IdFk { get; set; }
 
-    public int? TripFk { get; set; }
+    public int TripFk { get; set; }
 
     public virtual UserInfo IdFkNavigation { get; set; }
 

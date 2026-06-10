@@ -31,9 +31,10 @@
         <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Add place to @dayLabel</div>
 
         <div class="grid grid-cols-1 gap-3">
-            <!-- Place Search Input (Google Autocomplete Hooked) -->
-            <div>
-                <input type="text" name="PlaceName" class="day-autocomplete w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" required placeholder="Search place (e.g. restaurant, museum, park)..." />
+            <!-- Place Search Input -->
+            <div class="relative">
+                <input type="text" name="PlaceName" class="day-autocomplete w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" required placeholder="Search place (e.g. restaurant, museum, park)..." autocomplete="off" />
+                <div class="suggestions-dropdown absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto hidden z-50"></div>
             </div>
 
             <!-- Optional details -->

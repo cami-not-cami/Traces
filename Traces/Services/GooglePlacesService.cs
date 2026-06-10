@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Options;
@@ -50,7 +50,7 @@ namespace Traces.Services
                 }
             }
         }
-        public async Task<string> GetAutocomplete(string textInput)
+        public async Task<string> GetAutocomplete(string textInput, double? latitude = null, double? longitude = null)
         {
             // Call Google Places API to get autocomplete for the given text input
             // Parse the response and save relevant details to the database
@@ -63,11 +63,34 @@ namespace Traces.Services
             {
                 string url = "https://places.googleapis.com/v1/places:autocomplete";
 
-                var payload = new
+                object payload;
+                if (latitude.HasValue && longitude.HasValue)
                 {
-                    input = textInput,
+                    payload = new
+                    {
+                        input = textInput,
+                        locationBias = new
+                        {
+                            circle = new
+                            {
+                                center = new
+                                {
+                                    latitude = latitude.Value,
+                                    longitude = longitude.Value
+                                },
+                                radius = 5000.0 // 50 km radius bias
+                            }
+                        },
                     
-                };
+                    };
+                }
+                else
+                {
+                    payload = new
+                    {
+                        input = textInput
+                    };
+                }
 
                 try
                 {

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
+using System.Security.Claims;
 using Traces.Models;
 using Traces.Services;
 
@@ -19,16 +20,137 @@ namespace Traces.Controllers
         // GET: TripController
         public async Task<ActionResult> Index(int? tripId, string? placeId, string? startDate, string? endDate)
         {
-            if (User.Identity.IsAuthenticated == false)
+            // 1. Session to Database Migration (if authenticated)
+            if (User.Identity != null && User.Identity.IsAuthenticated)
             {
-                Guid anonymGuid = Guid.NewGuid();
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (userId != null)
+                {
+                    var sessionTripsStr = HttpContext.Session.GetString("SessionTrips");
+                    if (!string.IsNullOrEmpty(sessionTripsStr))
+                    {
+                        try
+                        {
+                            var sessionTrips = JsonSerializer.Deserialize<List<int>>(sessionTripsStr);
+                            if (sessionTrips != null && sessionTrips.Any())
+                            {
+                                var userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.UserFk == userId);
+                                if (userInfo == null)
+                                {
+                                    userInfo = new UserInfo
+                                    {
+                                        UserFk = userId,
+                                        FirstName = User.Identity.Name ?? "User",
+                                        LastName = ""
+                                    };
+                                    _context.UserInfos.Add(userInfo);
+                                    await _context.SaveChangesAsync();
+                                }
+
+                                foreach (var tripIdToLink in sessionTrips)
+                                {
+                                    var alreadyLinked = await _context.TripMembers.AnyAsync(tm => tm.TripFk == tripIdToLink && tm.IdFk == userInfo.IdPk);
+                                    if (!alreadyLinked)
+                                    {
+                                        var member = new TripMember
+                                        {
+                                            TripFk = tripIdToLink,
+                                            IdFk = userInfo.IdPk
+                                        };
+                                        _context.TripMembers.Add(member);
+                                    }
+                                }
+                                await _context.SaveChangesAsync();
+                                HttpContext.Session.Remove("SessionTrips");
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                           return Content($"Error during session migration: {e.Message}");
+                        }
+                    }
+                }
             }
+
+            // 2. Fetch User Trips for Side Menu
+            List<Trip> userTrips = new List<Trip>();
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                //same  as doing injection with usermanager
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (userId != null)
+                {
+                    var userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.UserFk == userId);
+                    if (userInfo == null)
+                    {
+                        userInfo = new UserInfo
+                        {
+                            UserFk = userId,
+                            FirstName = User.Identity.Name ?? "User",
+                            LastName = ""
+                        };
+                        _context.UserInfos.Add(userInfo);
+                        await _context.SaveChangesAsync();
+                    }
+
+                    userTrips = await _context.TripMembers
+                        .Where(tm => tm.IdFk == userInfo.IdPk)
+                        .Select(tm => tm.TripFkNavigation)
+                        .Distinct()
+                        .ToListAsync();
+                }
+            }
+            else
+            {
+                var sessionTripsStr = HttpContext.Session.GetString("SessionTrips");
+                if (!string.IsNullOrEmpty(sessionTripsStr))
+                {
+                    try
+                    {
+                        var sessionTrips = JsonSerializer.Deserialize<List<int>>(sessionTripsStr);
+                        if (sessionTrips != null && sessionTrips.Any())
+                        {
+                            userTrips = await _context.Trips
+                                .Where(t => sessionTrips.Contains(t.TrIdPk))
+                                .ToListAsync();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        return Content($"Error during at session migration: {e.Message}");
+                    }
+                }
+            }
+            ViewBag.UserTrips = userTrips;
 
             if (tripId.HasValue && tripId.Value > 0)
             {
                 var savedVm = await GetTripViewModelAsync(tripId.Value);
                 if (savedVm != null)
                 {
+                    // Fetch cover photo dynamically from the database or API fallback
+                    var firstPlace = savedVm.PlacesToVisit.FirstOrDefault();
+                    if (firstPlace != null)
+                    {
+                        if (!string.IsNullOrEmpty(firstPlace.CoverPhoto))
+                        {
+                            ViewBag.CoverPhoto = firstPlace.CoverPhoto;
+                        }
+                        else if (!string.IsNullOrEmpty(firstPlace.GooglePlaceId))
+                        {
+                            try
+                            {
+                                var json = await _googlePlacesService.GetPlaceDetails(firstPlace.GooglePlaceId);
+                                var googlePlace = JsonSerializer.Deserialize<GooglePlaceResponse>(json);
+                                ViewBag.CoverPhoto = googlePlace?.Photos?.FirstOrDefault()?.Name;
+                            }
+                            catch (Exception e)
+                            {
+                                // Ignore API fetch errors and fallback to default
+                                ViewBag.CoverPhoto = "~/default_cover_photo.jpg"; // Fallback 
+                            }
+                        }
+                    }
                     return View(savedVm);
                 }
             }
@@ -37,28 +159,67 @@ namespace Traces.Controllers
 
             if (placeId != null)
             {
+                // 1. Try to fetch existing place from database to avoid API call
+                var existingPlace = await _context.Places
+                    .Include(p => p.PlacePhotos)
+                    .FirstOrDefaultAsync(p => p.GooglePlaceId == placeId);
+
+                if (existingPlace != null)
+                {
+                    ViewBag.CoverPhoto = existingPlace.PlacePhotos.FirstOrDefault()?.GooglePhotoReference;
+
+                    var place = new PlaceViewModel
+                    {
+                        PlaceId = existingPlace.PlIdPk,
+                        GooglePlaceId = existingPlace.GooglePlaceId,
+                        Name = existingPlace.Name,
+                        Latitude = existingPlace.Latitude,
+                        Longitude = existingPlace.Longitude,
+                        FormattedAddress = existingPlace.FormattedAddress,
+                        PrimaryCategory = existingPlace.PrimaryCategory,
+                        City = existingPlace.City,
+                        CoverPhoto = existingPlace.PlacePhotos.FirstOrDefault()?.GooglePhotoReference
+                    };
+
+                    vm = new CreateTripViewModel
+                    {
+                        Title = $"Trip to {place.Name}",
+                        StartDate = DateOnly.TryParse(startDate, out var start1) ? start1 : null,
+                        EndDate = DateOnly.TryParse(endDate, out var end1) ? end1 : null,
+                        Budget = 0.0d,
+                        Latitude = place.Latitude,
+                        Longitude = place.Longitude,
+                        PlacesToVisit = new List<PlaceViewModel> { place },
+                    };
+                    return View(vm);
+                }
+
+                // 2. Fallback to API call if not in database
                 var json = await _googlePlacesService.GetPlaceDetails(placeId);
                 var googlePlace = JsonSerializer.Deserialize<GooglePlaceResponse>(json);
 
                 ViewBag.CoverPhoto = googlePlace.Photos?.FirstOrDefault()?.Name;
 
-                var place = new PlaceViewModel
+                var placeVm = new PlaceViewModel
                 {
+                    GooglePlaceId = placeId,
                     Name = googlePlace.DisplayName.Text,
                     Latitude = (decimal)googlePlace.Location.Latitude,
                     Longitude = (decimal)googlePlace.Location.Longitude,
                     FormattedAddress = googlePlace.FormattedAddress,
+                    PrimaryCategory = "Attraction",
+                    CoverPhoto = googlePlace.Photos?.FirstOrDefault()?.Name
                 };
 
                 vm = new CreateTripViewModel
                 {
-                    Title = $"Trip to {place.Name}",
-                    StartDate = DateOnly.TryParse(startDate, out var start) ? start : null,
-                    EndDate = DateOnly.TryParse(endDate, out var end) ? end : null,
+                    Title = $"Trip to {placeVm.Name}",
+                    StartDate = DateOnly.TryParse(startDate, out var start2) ? start2 : null,
+                    EndDate = DateOnly.TryParse(endDate, out var end2) ? end2 : null,
                     Budget = 0.0d,
-                    Latitude = place.Latitude,
-                    Longitude = place.Longitude,
-                    PlacesToVisit = new List<PlaceViewModel> { place },
+                    Latitude = placeVm.Latitude,
+                    Longitude = placeVm.Longitude,
+                    PlacesToVisit = new List<PlaceViewModel> { placeVm },
                 };
                 return View(vm);
             }
@@ -128,6 +289,8 @@ namespace Traces.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            await LinkUserToTripAsync(trip.TrIdPk);
+
             return RedirectToAction("Index", new { tripId = trip.TrIdPk });
         }
         private async Task<CreateTripViewModel?> GetTripViewModelAsync(int tripId)
@@ -136,6 +299,7 @@ namespace Traces.Controllers
                 .Include(t => t.TripDays)
                     .ThenInclude(d => d.TripActivities)
                         .ThenInclude(a => a.PlaceFkNavigation)
+                            .ThenInclude(p => p.PlacePhotos)
                 .Include(t => t.TripDays)
                     .ThenInclude(d => d.TripActivities)
                         .ThenInclude(a => a.Checklists)
@@ -186,7 +350,8 @@ namespace Traces.Controllers
                                 Longitude = a.PlaceFkNavigation.Longitude,
                                 FormattedAddress = a.PlaceFkNavigation.FormattedAddress,
                                 City = a.PlaceFkNavigation.City,
-                                PrimaryCategory = a.PlaceFkNavigation.PrimaryCategory
+                                PrimaryCategory = a.PlaceFkNavigation.PrimaryCategory,
+                                CoverPhoto = a.PlaceFkNavigation.PlacePhotos.FirstOrDefault()?.GooglePhotoReference
                             },
                             ChecklistItems = a.Checklists.ToList()
                         })
@@ -234,8 +399,8 @@ namespace Traces.Controllers
             string? tripEndDate,
             string? placeName,
             string? googlePlaceId,
-            decimal? latitude,
-            decimal? longitude,
+            string? latitude,
+            string? longitude,
             string? formattedAddress,
             int dayNumber,
             string? category,
@@ -286,6 +451,8 @@ namespace Traces.Controllers
                     }
                 }
                 await _context.SaveChangesAsync();
+
+                await LinkUserToTripAsync(tripId);
             }
 
             var targetDay = await _context.TripDays
@@ -306,12 +473,38 @@ namespace Traces.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            decimal? lat = null;
+            if (!string.IsNullOrEmpty(latitude))
+            {
+                if (decimal.TryParse(latitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedLat))
+                {
+                    lat = parsedLat;
+                }
+                else if (decimal.TryParse(latitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out parsedLat))
+                {
+                    lat = parsedLat;
+                }
+            }
+
+            decimal? lng = null;
+            if (!string.IsNullOrEmpty(longitude))
+            {
+                if (decimal.TryParse(longitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedLng))
+                {
+                    lng = parsedLng;
+                }
+                else if (decimal.TryParse(longitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out parsedLng))
+                {
+                    lng = parsedLng;
+                }
+            }
+
             var placeVm = new PlaceViewModel
             {
                 GooglePlaceId = googlePlaceId,
                 Name = placeName ?? "Unnamed Place",
-                Latitude = latitude,
-                Longitude = longitude,
+                Latitude = lat,
+                Longitude = lng,
                 FormattedAddress = formattedAddress ?? "",
                 PrimaryCategory = category ?? "Attraction"
             };
@@ -358,9 +551,21 @@ namespace Traces.Controllers
 
         private async Task<int> GetOrCreatePlaceAsync(PlaceViewModel placeVm)
         {
-            var existing = await _context.Places.FirstOrDefaultAsync(p => p.GooglePlaceId == placeVm.GooglePlaceId);
+            var existing = await _context.Places.Include(p => p.PlacePhotos).FirstOrDefaultAsync(p => p.GooglePlaceId == placeVm.GooglePlaceId);
             if (existing != null)
             {
+                if (!existing.PlacePhotos.Any() && !string.IsNullOrEmpty(placeVm.CoverPhoto))
+                {
+                    var maxPhotoId = await _context.PlacePhotos.Select(p => (int?)p.PlPhIdPk).MaxAsync() ?? 0;
+                    var newPhoto = new PlacePhoto
+                    {
+                        PlPhIdPk = maxPhotoId + 1,
+                        PlacesFk = existing.PlIdPk,
+                        GooglePhotoReference = placeVm.CoverPhoto
+                    };
+                    _context.PlacePhotos.Add(newPhoto);
+                    await _context.SaveChangesAsync();
+                }
                 return existing.PlIdPk;
             }
 
@@ -376,20 +581,130 @@ namespace Traces.Controllers
                 CountryName = ""
             };
 
-            int nextId = (await _context.Places.Select(p => (int?)p.PlIdPk).MaxAsync() ?? 0) + 1;
-            newPlace.PlIdPk = nextId;
-
             _context.Places.Add(newPlace);
             await _context.SaveChangesAsync();
+
+            if (!string.IsNullOrEmpty(placeVm.CoverPhoto))
+            {
+                var maxPhotoId = await _context.PlacePhotos.Select(p => (int?)p.PlPhIdPk).MaxAsync() ?? 0;
+                var newPhoto = new PlacePhoto
+                {
+                    PlPhIdPk = maxPhotoId + 1,
+                    PlacesFk = newPlace.PlIdPk,
+                    GooglePhotoReference = placeVm.CoverPhoto
+                };
+                _context.PlacePhotos.Add(newPhoto);
+                await _context.SaveChangesAsync();
+            }
+
             return newPlace.PlIdPk;
         }
 
-        private async Task SetBudget(int tripId)
+        private async Task<IActionResult> SetBudget(int tripId, double budget)
         {
-
+            if(tripId != null && User.Identity.IsAuthenticated)
+            {
+                var currentTrip = await _context.Trips.FirstOrDefaultAsync(x => x.TrIdPk == tripId);
+                try
+                {
+                    currentTrip.Budget = budget;
+                    _context.Trips.Update(currentTrip);
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    return Content($"Error setting budget: {ex.Message}");
+                }
+            }
+            else
+            {
+                return Content("Must be logged in to set a budget for the trip.");
+            }
+            return View();
         }
 
+        private async Task LinkUserToTripAsync(int tripId)
+        {
+            if (User.Identity != null && User.Identity.IsAuthenticated)
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
+                          ?? User.FindFirst("sub")?.Value 
+                          ?? User.FindFirst(ClaimTypes.Name)?.Value;
+                if (userId != null)
+                {
+                    var userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.UserFk == userId);
+                    if (userInfo == null)
+                    {
+                        userInfo = new UserInfo
+                        {
+                            UserFk = userId,
+                            FirstName = User.Identity.Name ?? "User",
+                            LastName = ""
+                        };
+                        _context.UserInfos.Add(userInfo);
+                        await _context.SaveChangesAsync();
+                    }
 
+                    var alreadyLinked = await _context.TripMembers.AnyAsync(tm => tm.TripFk == tripId && tm.IdFk == userInfo.IdPk);
+                    if (!alreadyLinked)
+                    {
+                        var member = new TripMember
+                        {
+                            TripFk = tripId,
+                            IdFk = userInfo.IdPk
+                        };
+                        _context.TripMembers.Add(member);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+            }
+            else
+            {
+                var sessionTripsStr = HttpContext.Session.GetString("SessionTrips");
+                var sessionTrips = string.IsNullOrEmpty(sessionTripsStr)
+                    ? new List<int>()
+                    : JsonSerializer.Deserialize<List<int>>(sessionTripsStr) ?? new List<int>();
 
+                if (!sessionTrips.Contains(tripId))
+                {
+                    sessionTrips.Add(tripId);
+                    HttpContext.Session.SetString("SessionTrips", JsonSerializer.Serialize(sessionTrips));
+                }
+            }
+        }
+
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> ReorderActivities([FromBody] ReorderRequest request)
+        {
+            if (request == null || request.ActivityIds == null)
+            {
+                return BadRequest("Invalid request data.");
+            }
+
+            // Update the order index and day for each activity
+            for (int i = 0; i < request.ActivityIds.Count; i++)
+            {
+                var activityId = request.ActivityIds[i];
+                var activity = await _context.TripActivities.FindAsync(activityId);
+                if (activity != null)
+                {
+                    activity.OrderIndex = i;
+                    if (activity.TripDayFk != request.TripDayId)
+                    {
+                        activity.TripDayFk = request.TripDayId;
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Json(new { success = true });
+        }
+
+        public class ReorderRequest
+        {
+            public int TripDayId { get; set; }
+            public List<int> ActivityIds { get; set; }
+        }
     }
 }

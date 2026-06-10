@@ -5,6 +5,27 @@
     ViewData["FullBleed"] = true;
 }
 
+<style>
+    .activity-card.dragging {
+        opacity: 0.4;
+        border-color: #6366f1 !important; /* indigo-500 */
+        box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.1), 0 4px 6px -2px rgba(99, 102, 241, 0.05);
+        transform: scale(0.98);
+    }
+
+    .activities-container.drag-over {
+        background-color: rgba(99, 102, 241, 0.03);
+        border: 2px dashed #c7d2fe; /* indigo-200 */
+        border-radius: 1rem;
+        padding: 0.75rem;
+        transition: all 0.2s ease;
+    }
+
+    .drag-handle {
+        align-self: center;
+    }
+</style>
+
 <!-- ROOT WRAPPER: Fixed height full-screen container to maintain layout -->
 <div class="flex flex-col md:flex-row h-[calc(100vh-64px)] w-full overflow-hidden bg-slate-50 text-slate-800 font-sans relative">
 
@@ -25,12 +46,10 @@
                 </button>
                 <span class="font-bold text-slate-700">Itinerary Planner</span>
             </div>
-            
-            <div class="flex items-center space-x-1.5 sm:space-x-3">
-                <button class="bg-slate-200/50 hover:bg-slate-200/80 text-slate-700 px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center border border-slate-300/30 transition-all">
-                    Trip plan <svg class="w-4 h-4 ml-1.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </button>
 
+            <div class="flex items-center space-x-1.5 sm:space-x-3">
+
+                
                 @if (Model.TripId == 0)
                 {
                     <form asp-controller="Trip" asp-action="Save" method="post" class="inline m-0">
@@ -40,6 +59,22 @@
                         <input type="hidden" asp-for="StartDate" />
                         <input type="hidden" asp-for="EndDate" />
                         <input type="hidden" asp-for="Budget" />
+
+                        @if (Model.PlacesToVisit != null)
+                        {
+                            for (int i = 0; i < Model.PlacesToVisit.Count; i++)
+                            {
+                                <input type="hidden" name="PlacesToVisit[@i].GooglePlaceId" value="@Model.PlacesToVisit[i].GooglePlaceId" />
+                                <input type="hidden" name="PlacesToVisit[@i].Name" value="@Model.PlacesToVisit[i].Name" />
+                                <input type="hidden" name="PlacesToVisit[@i].Latitude" value="@Model.PlacesToVisit[i].Latitude" />
+                                <input type="hidden" name="PlacesToVisit[@i].Longitude" value="@Model.PlacesToVisit[i].Longitude" />
+                                <input type="hidden" name="PlacesToVisit[@i].FormattedAddress" value="@Model.PlacesToVisit[i].FormattedAddress" />
+                                <input type="hidden" name="PlacesToVisit[@i].PrimaryCategory" value="@Model.PlacesToVisit[i].PrimaryCategory" />
+                                <input type="hidden" name="PlacesToVisit[@i].City" value="@Model.PlacesToVisit[i].City" />
+                                <input type="hidden" name="PlacesToVisit[@i].CoverPhoto" value="@Model.PlacesToVisit[i].CoverPhoto" />
+                            }
+                        }
+
                         <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 hover:shadow-lg hover:shadow-emerald-500/20 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center transition-all">
                             <svg class="w-4 h-4 sm:mr-1.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -48,7 +83,7 @@
                         </button>
                     </form>
                 }
-                
+
                 <button class="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/20 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center transition-all">
                     <svg class="w-4 h-4 sm:mr-1.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 10.742l4.73 2.837m0-7.158l-4.73 2.837M19 12a3 3 0 11-6 0 3 3 0 016 0zm-12 6a3 3 0 11-6 0 3 3 0 016 0zm0-12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -70,13 +105,18 @@
                 else
                 {
                     var query = Model.Title;
-                    if (query.StartsWith("Trip to ", StringComparison.OrdinalIgnoreCase))
+                    if (query != null)
                     {
-                        query = query.Substring(8);
+                        if (query.StartsWith("Trip to ", StringComparison.OrdinalIgnoreCase))
+                        {
+                            query = query.Substring(8);
+                        }
+
                     }
                     coverUrl = !string.IsNullOrEmpty(query)
-                        ? $"https://images.unsplash.com/featured/1600x900/?{Uri.EscapeDataString(query)},travel"
-                        : "https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?auto=format&fit=crop&w=1600&q=80";
+                             ? $"https://source.unsplash.com/1600x900/?{Uri.EscapeDataString(query)},travel"
+                             : Url.Content("~/default_cover_photo.jpg");
+
                 }
             }
             <div class="h-64 bg-slate-200 w-full bg-cover bg-center relative" style="background-image: url('@coverUrl');">
@@ -84,7 +124,7 @@
             </div>
 
             <div class="max-w-3xl mx-auto px-6 -mt-20 relative z-10 pb-20">
-                
+
                 <!-- Trip Destination Badge -->
                 <div class="bg-white rounded-2xl shadow-xl shadow-slate-100/80 border border-slate-100 p-8 flex flex-col sm:flex-row justify-between items-start sm:items-end mb-12 transform transition-all duration-300 hover:shadow-2xl">
                     <div class="mb-4 sm:mb-0">
@@ -102,8 +142,12 @@
                         <div class="flex -space-x-2">
                             @foreach (var member in Model.Members.Take(3))
                             {
+                                var initial1 = !string.IsNullOrEmpty(member.FirstName) ? member.FirstName[0].ToString() : "";
+                                var initial2 = !string.IsNullOrEmpty(member.LastName) ? member.LastName[0].ToString() : "";
+                                var initials = (initial1 + initial2).ToUpper();
+                                if (string.IsNullOrEmpty(initials)) initials = "U";
                                 <div class="w-9 h-9 rounded-full border-2 border-white bg-indigo-150 flex items-center justify-center text-xs font-bold text-indigo-700 shadow-md" title="@member.FullName">
-                                    @member.FirstName[0]@member.LastName[0]
+                                    @initials
                                 </div>
                             }
                         </div>
@@ -112,7 +156,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- 1. PLACES TO VISIT (UNSCHEDULED BUCKET) -->
                 <div class="mb-12">
                     <h3 class="text-lg font-extrabold text-slate-900 mb-4 flex items-center">
@@ -135,13 +179,14 @@
                         <p class="text-xs text-slate-400 mb-4 italic">No unscheduled places added yet.</p>
                     }
 
-                    @await Html.PartialAsync("_InlineAddPlacePartial", new { 
-                        DayNumber = 0, 
-                        DayLabel = "Unscheduled", 
-                        TripId = Model.TripId, 
-                        TripTitle = Model.Title, 
-                        TripStartDate = Model.StartDate?.ToString("yyyy-MM-dd"), 
-                        TripEndDate = Model.EndDate?.ToString("yyyy-MM-dd") 
+                    @await Html.PartialAsync("_InlineAddPlacePartial", new
+                    {
+                        DayNumber = 0,
+                        DayLabel = "Unscheduled",
+                        TripId = Model.TripId,
+                        TripTitle = Model.Title,
+                        TripStartDate = Model.StartDate?.ToString("yyyy-MM-dd"),
+                        TripEndDate = Model.EndDate?.ToString("yyyy-MM-dd")
                     })
                 </div>
 
@@ -164,10 +209,10 @@
                         <div class="space-y-12">
                             @foreach (var day in Model.Days)
                             {
-                                <div class="border-l-2 border-slate-200/80 pl-6 ml-4 relative">
+                                <div class="border-l-2 border-slate-200/80 pl-6 ml-4 relative" id="day-@day.TripDayId">
                                     <!-- Decorative circle marking the timeline -->
                                     <div class="absolute -left-[7px] top-1.5 w-3 h-3 rounded-full bg-indigo-500 ring-4 ring-white"></div>
-                                    
+
                                     <!-- Day Header -->
                                     <div class="flex items-baseline justify-between mb-5">
                                         <h3 class="text-lg font-extrabold text-slate-950">@day.DayLabel</h3>
@@ -177,10 +222,17 @@
                                     </div>
 
                                     <!-- Activities in the day -->
-                                    <div class="space-y-6 mb-4">
+                                    <div class="activities-container space-y-6 mb-4" data-day-id="@day.TripDayId">
                                         @foreach (var activity in day.Activities)
                                         {
-                                            <div class="bg-white border border-slate-150 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start">
+                                            <div class="activity-card bg-white border border-slate-150 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start cursor-grab active:cursor-grabbing" draggable="true" data-activity-id="@activity.TripActivityId">
+                                                <!-- Drag handle -->
+                                                <div class="mr-3 mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
+                                                    </svg>
+                                                </div>
+
                                                 <div class="space-y-2 flex-1 pr-4">
                                                     <div class="flex items-center space-x-2">
                                                         <span class="bg-indigo-50 text-indigo-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
@@ -199,7 +251,7 @@
                                                     </div>
                                                     <h4 class="font-bold text-slate-900 text-base leading-snug">@activity.Place?.Name</h4>
                                                     <p class="text-xs text-slate-450">@activity.Place?.FormattedAddress</p>
-                                                    
+
                                                     @if (activity.ChecklistItems != null && activity.ChecklistItems.Count > 0)
                                                     {
                                                         <ul class="space-y-1 mt-3">
@@ -213,7 +265,7 @@
                                                         </ul>
                                                     }
                                                 </div>
-                                                
+
                                                 <span class="bg-emerald-50 text-emerald-700 border border-emerald-150 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md">
                                                     @activity.Status
                                                 </span>
@@ -231,13 +283,14 @@
                                     </div>
 
                                     <!-- Inline Add Place Form for this day -->
-                                    @await Html.PartialAsync("_InlineAddPlacePartial", new { 
-                                        DayNumber = day.DayNumber, 
-                                        DayLabel = day.DayLabel, 
-                                        TripId = Model.TripId, 
-                                        TripTitle = Model.Title, 
-                                        TripStartDate = Model.StartDate?.ToString("yyyy-MM-dd"), 
-                                        TripEndDate = Model.EndDate?.ToString("yyyy-MM-dd") 
+                                    @await Html.PartialAsync("_InlineAddPlacePartial", new
+                                    {
+                                        DayNumber = day.DayNumber,
+                                        DayLabel = day.DayLabel,
+                                        TripId = Model.TripId,
+                                        TripTitle = Model.Title,
+                                        TripStartDate = Model.StartDate?.ToString("yyyy-MM-dd"),
+                                        TripEndDate = Model.EndDate?.ToString("yyyy-MM-dd")
                                     })
                                 </div>
                             }
@@ -251,59 +304,28 @@
                         <svg class="w-5.5 h-5.5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         Trip Financials
                     </h2>
-                    
+
                     <div class="bg-slate-50 border border-slate-200/50 rounded-2xl p-6 w-full sm:w-60 flex flex-col justify-center shadow-sm">
                         <h3 class="font-bold text-slate-500 text-xs uppercase tracking-wider mb-2">Estimated Budget</h3>
-                        <div class="text-2xl font-black text-slate-900 mb-1.5">
-                            @(Model.Budget.HasValue ? Model.Budget.Value.ToString("N2") : "0.00") €
-                        </div>
-                        <a href="#" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center transition-colors">
-                            Manage budget <span class="ml-1">→</span>
-                        </a>
-                    </div>
-                </div>
 
-                <!-- 4. EXPLORE SECTION -->
-                <div class="border-t border-slate-200/60 pt-10">
-                    <div class="flex items-center justify-between mb-6">
-                        <h2 class="text-xl font-extrabold text-slate-900 flex items-center tracking-tight">
-                            <svg class="w-5.5 h-5.5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
-                            Explore Local Guides
-                        </h2>
-                        <button class="bg-rose-500 hover:bg-rose-600 hover:shadow-lg hover:shadow-rose-500/20 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center shadow-sm transition-all">
-                            <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                            Browse all
+                        <!-- Editable Bold Input Area -->
+                        <div class="flex items-center text-2xl font-black text-slate-900 mb-3 border-b border-transparent hover:border-slate-300 focus-within:border-indigo-500 transition-colors pb-0.5">
+                            <input type="number"
+                                   min="0"
+                                   max="100000"
+                                   step="50"
+                                   value="@(Model.Budget ?? 0)"
+                                   class="w-full bg-transparent font-black text-slate-900 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                   placeholder="0">
+                            <span class="ml-1 text-slate-400">€</span>
+                        </div>
+
+                        <!-- Save Action -->
+                        <button type="submit" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center transition-colors text-left bg-transparent border-none p-0 cursor-pointer">
+                            Save budget <span class="ml-1">→</span>
                         </button>
                     </div>
-
-                    <!-- Cards Layout Grid -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
-                        <!-- Card 1 -->
-                        <div class="group cursor-pointer">
-                            <div class="h-40 bg-slate-100 rounded-2xl mb-3.5 bg-cover bg-center overflow-hidden border border-slate-100 shadow-sm relative group-hover:shadow-md transition-all">
-                                <div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" style="background-image: url('https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?auto=format&fit=crop&w=400&q=80');"></div>
-                            </div>
-                            <h3 class="font-bold text-slate-900 text-sm mb-1 leading-snug group-hover:text-indigo-650 transition-colors">Fly With Liz's Oceania Adventure</h3>
-                            <p class="text-xs text-slate-400 mb-3 line-clamp-1">Popular guide by a Wanderlog community member</p>
-                            <div class="flex items-center text-xs text-slate-600 font-medium">
-                                <img class="w-5.5 h-5.5 rounded-full mr-2 border border-slate-100 shadow-sm" src="https://i.pravatar.cc/100?img=5" alt=""> Fly With Liz
-                            </div>
-                        </div>
-
-                        <!-- Card 2 -->
-                        <div class="group cursor-pointer">
-                            <div class="h-40 bg-slate-100 rounded-2xl mb-3.5 bg-cover bg-center overflow-hidden border border-slate-100 shadow-sm relative group-hover:shadow-md transition-all">
-                                <div class="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105" style="background-image: url('https://images.unsplash.com/photo-1542315750-f1c713b6329c?auto=format&fit=crop&w=400&q=80');"></div>
-                            </div>
-                            <h3 class="font-bold text-slate-900 text-sm mb-1 leading-snug group-hover:text-indigo-650 transition-colors">Allan Watt's Cairns & Great Barrier Reef</h3>
-                            <p class="text-xs text-slate-400 mb-3 line-clamp-1">Popular guide by a Wanderlog community member</p>
-                            <div class="flex items-center text-xs text-slate-600 font-medium">
-                                <img class="w-5.5 h-5.5 rounded-full mr-2 border border-slate-100 shadow-sm" src="https://i.pravatar.cc/100?img=8" alt=""> Allan Watt
-                            </div>
-                        </div>
-                    </div>
                 </div>
-
             </div>
         </div>
     </main>
@@ -320,16 +342,17 @@
     const hasCoords = @(Model.Latitude.HasValue && Model.Longitude.HasValue ? "true" : "false");
 
     const places = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-        (Model.PlacesToVisit ?? new List<PlaceViewModel>())
-        .Concat((Model.Days ?? new List<TripDayViewModel>()).SelectMany(d => d.Activities ?? new List<TripActivityViewModel>()).Where(a => a.Place != null).Select(a => a.Place))
-        .Where(p => p != null && p.Latitude.HasValue && p.Longitude.HasValue)
-        .Select(p => new {
-            name = p.Name,
-            lat = (double)p.Latitude.Value,
-            lng = (double)p.Longitude.Value,
-            category = p.PrimaryCategory
-        })
-    ));
+                (Model.PlacesToVisit ?? new List<PlaceViewModel>())
+                .Concat((Model.Days ?? new List<TripDayViewModel>()).SelectMany(d => d.Activities ?? new List<TripActivityViewModel>()).Where(a => a.Place != null).Select(a => a.Place))
+                .Where(p => p != null && p.Latitude.HasValue && p.Longitude.HasValue)
+                .Select(p => new
+                {
+                        name = p.Name,
+                        lat = (double)p.Latitude.Value,
+                        lng = (double)p.Longitude.Value,
+                        category = p.PrimaryCategory
+                })
+        ));
 
     async function initMap() {
         const { Map } = await google.maps.importLibrary("maps");
@@ -364,41 +387,123 @@
             map.fitBounds(bounds);
         }
 
-        // Initialize autocomplete for all inline day forms
+        // Initialize custom autocomplete for all inline day forms using the backend Places API (New)
         document.querySelectorAll('.day-autocomplete').forEach(input => {
-            const autocomplete = new google.maps.places.Autocomplete(input, {
-                fields: ['place_id', 'geometry', 'name', 'formatted_address', 'types'],
-                types: ['establishment', 'geocode']
+            const form = input.closest('form');
+            const dropdown = form.querySelector('.suggestions-dropdown');
+            let debounceTimer;
+
+            input.addEventListener('input', function () {
+                clearTimeout(debounceTimer);
+                const query = this.value.trim();
+
+                // Reset hidden fields
+                form.querySelector('input[name="GooglePlaceId"]').value = '';
+                form.querySelector('input[name="Latitude"]').value = '';
+                form.querySelector('input[name="Longitude"]').value = '';
+                form.querySelector('input[name="FormattedAddress"]').value = '';
+
+                if (query.length < 3) {
+                    dropdown.innerHTML = '';
+                    dropdown.classList.add('hidden');
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetchSuggestions(query, dropdown, input);
+                }, 300);
             });
 
-            autocomplete.addListener('place_changed', () => {
-                const place = autocomplete.getPlace();
-                if (!place.geometry) return;
-
-                const form = input.closest('form');
-                if (form) {
-                    form.querySelector('input[name="GooglePlaceId"]').value = place.place_id ?? '';
-                    form.querySelector('input[name="Latitude"]').value = place.geometry.location.lat();
-                    form.querySelector('input[name="Longitude"]').value = place.geometry.location.lng();
-                    form.querySelector('input[name="FormattedAddress"]').value = place.formatted_address ?? '';
-                    form.querySelector('input[name="PlaceName"]').value = place.name ?? '';
-
-                    // Autofill category if possible
-                    const select = form.querySelector('select[name="Category"]');
-                    if (place.types && (place.types.includes('restaurant') || place.types.includes('food') || place.types.includes('cafe'))) {
-                        select.value = 'Food';
-                    } else if (place.types && place.types.includes('lodging')) {
-                        select.value = 'Lodging';
-                    } else if (place.types && place.types.includes('transit_station')) {
-                        select.value = 'Transit';
-                    } else if (place.types && (place.types.includes('shopping_mall') || place.types.includes('store'))) {
-                        select.value = 'Shopping';
-                    } else {
-                        select.value = 'Attraction';
-                    }
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', function (e) {
+                if (e.target !== input && !dropdown.contains(e.target)) {
+                    dropdown.innerHTML = '';
+                    dropdown.classList.add('hidden');
                 }
             });
         });
+
+        async function fetchSuggestions(query, dropdown, input) {
+            try {
+                let url = `/Home/Autocomplete?textInput=${encodeURIComponent(query)}`;
+                if (hasCoords) {
+                    url += `&latitude=${lat}&longitude=${lng}`;
+                }
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Request failed");
+                const data = await response.json();
+
+                renderDropdown(data.suggestions || [], dropdown, input);
+            } catch (error) {
+                console.error("Error fetching suggestions", error);
+            }
+        }
+
+        function renderDropdown(suggestions, dropdown, input) {
+            dropdown.innerHTML = '';
+
+            if (suggestions.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            suggestions.forEach(item => {
+                const textValue = item.placePrediction.text.text;
+                const placeId = item.placePrediction.placeId;
+
+                const row = document.createElement('div');
+                row.className = 'px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 cursor-pointer transition-colors';
+                row.textContent = textValue;
+
+                row.addEventListener('click', async () => {
+                    input.value = textValue;
+                    dropdown.innerHTML = '';
+                    dropdown.classList.add('hidden');
+
+                    const form = input.closest('form');
+                    form.querySelector('input[name="GooglePlaceId"]').value = placeId;
+
+                    // Fetch details from backend
+                    try {
+                        const detailsResponse = await fetch(`/Home/PlaceDetails?placeId=${placeId}`);
+                        if (detailsResponse.ok) {
+                            const details = await detailsResponse.json();
+
+                            // Set coordinates and other hidden fields
+                            const latitudeVal = details.location?.latitude || '';
+                            const longitudeVal = details.location?.longitude || '';
+                            const addressVal = details.formattedAddress || '';
+                            const displayNameVal = details.displayName?.text || textValue;
+
+                            form.querySelector('input[name="Latitude"]').value = latitudeVal;
+                            form.querySelector('input[name="Longitude"]').value = longitudeVal;
+                            form.querySelector('input[name="FormattedAddress"]').value = addressVal;
+                            form.querySelector('input[name="PlaceName"]').value = displayNameVal;
+
+                            // Autofill category if possible
+                            const select = form.querySelector('select[name="Category"]');
+                            if (details.types && (details.types.includes('restaurant') || details.types.includes('food') || details.types.includes('cafe'))) {
+                                select.value = 'Food';
+                            } else if (details.types && details.types.includes('lodging')) {
+                                select.value = 'Lodging';
+                            } else if (details.types && details.types.includes('transit_station')) {
+                                select.value = 'Transit';
+                            } else if (details.types && (details.types.includes('shopping_mall') || details.types.includes('store'))) {
+                                select.value = 'Shopping';
+                            } else {
+                                select.value = 'Attraction';
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Error fetching place details", error);
+                    }
+                });
+
+                dropdown.appendChild(row);
+            });
+
+            dropdown.classList.remove('hidden');
+        }
     }
 
     function showInlineForm(button) {
@@ -420,6 +525,134 @@
         const trigger = container.querySelector('button');
         trigger.classList.remove('hidden');
     }
+
+    // Drag & Drop logic for activities reordering
+    document.addEventListener('DOMContentLoaded', () => {
+        let draggedCard = null;
+        let sourceDayId = null;
+
+        function initDragAndDrop() {
+            const cards = document.querySelectorAll('.activity-card');
+            const containers = document.querySelectorAll('.activities-container');
+
+            cards.forEach(card => {
+                // Ensure events are attached only once
+                if (card.dataset.dragInitialized) return;
+                card.dataset.dragInitialized = 'true';
+
+                card.addEventListener('dragstart', (e) => {
+                    draggedCard = card;
+                    const container = card.closest('.activities-container');
+                    sourceDayId = container ? container.dataset.dayId : null;
+                    card.classList.add('dragging');
+                    e.dataTransfer.setData('text/plain', card.dataset.activityId);
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                card.addEventListener('dragend', () => {
+                    card.classList.remove('dragging');
+                    draggedCard = null;
+                    sourceDayId = null;
+                    containers.forEach(c => c.classList.remove('drag-over'));
+                });
+            });
+
+            containers.forEach(container => {
+                if (container.dataset.dragInitialized) return;
+                container.dataset.dragInitialized = 'true';
+
+                container.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    container.classList.add('drag-over');
+
+                    const afterElement = getDragAfterElement(container, e.clientY);
+                    if (afterElement == null) {
+                        container.appendChild(draggedCard);
+                    } else {
+                        container.insertBefore(draggedCard, afterElement);
+                    }
+                });
+
+                container.addEventListener('dragleave', () => {
+                    container.classList.remove('drag-over');
+                });
+
+                container.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    container.classList.remove('drag-over');
+
+                    const targetDayId = container.dataset.dayId;
+                    const activityId = e.dataTransfer.getData('text/plain');
+
+                    // Extract all activity IDs in target container in their new order
+                    const activityIds = Array.from(container.querySelectorAll('.activity-card'))
+                        .map(c => parseInt(c.dataset.activityId));
+
+                    // Send the update to the server
+                    try {
+                        const response = await fetch('/Trip/ReorderActivities', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                tripDayId: parseInt(targetDayId),
+                                activityIds: activityIds
+                            })
+                        });
+
+                        if (response.ok) {
+                            console.log('Reordered successfully');
+                            // If it was moved between days, also trigger reordering update on the source container to normalize it.
+                            if (sourceDayId && sourceDayId !== targetDayId) {
+                                const sourceContainer = document.querySelector(`.activities-container[data-day-id="${sourceDayId}"]`);
+                                if (sourceContainer) {
+                                    const sourceActivityIds = Array.from(sourceContainer.querySelectorAll('.activity-card'))
+                                        .map(c => parseInt(c.dataset.activityId));
+
+                                    await fetch('/Trip/ReorderActivities', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({
+                                            tripDayId: parseInt(sourceDayId),
+                                            activityIds: sourceActivityIds
+                                        })
+                                    });
+                                }
+                            }
+                        } else {
+                            console.error('Failed to reorder activities');
+                        }
+                    } catch (err) {
+                        console.error('Error reordering activities', err);
+                    }
+                });
+            });
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.activity-card:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        initDragAndDrop();
+
+        // Re-initialize drag and drop when new elements are added dynamically
+        const observer = new MutationObserver(initDragAndDrop);
+        observer.observe(document.body, { childList: true, subtree: true });
+    });
 </script>
 <script async
         src="https://maps.googleapis.com/maps/api/js?key=@Configuration["ApiKeys:GoogleApiKey"]&libraries=places&loading=async&callback=initMap">
