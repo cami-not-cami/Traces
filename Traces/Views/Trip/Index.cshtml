@@ -314,6 +314,7 @@
                                    min="0"
                                    max="100000"
                                    step="50"
+                                   id="budget"
                                    value="@(Model.Budget ?? 0)"
                                    class="w-full bg-transparent font-black text-slate-900 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                    placeholder="0">
@@ -321,7 +322,7 @@
                         </div>
 
                         <!-- Save Action -->
-                        <button type="submit" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center transition-colors text-left bg-transparent border-none p-0 cursor-pointer">
+                        <button type="button" onclick="saveBudget(@Model.TripId)"  class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center transition-colors text-left bg-transparent border-none p-0 cursor-pointer">
                             Save budget <span class="ml-1">→</span>
                         </button>
                     </div>
@@ -336,6 +337,21 @@
 </div>
 
 <script>
+     function saveBudget(tripId){
+        const budget = document.getElementById("budget").value;
+        $.ajax({
+            url: "@Url.Action("SetBudget", "Trip")",
+            type: "POST",
+            data: { tripId: tripId, budget: budget },
+           success: function(result) {
+                 alert('yeap');
+             },
+    error: function(XMLHttpRequest, textStatus, errorThrown) {
+        alert(errorThrown);
+    }
+        });
+    }
+
     let map;
     const lat = @(Model.Latitude?.ToString("G", System.Globalization.CultureInfo.InvariantCulture) ?? "47.200");
     const lng = @(Model.Longitude?.ToString("G", System.Globalization.CultureInfo.InvariantCulture) ?? "13.200");
@@ -653,6 +669,9 @@
         const observer = new MutationObserver(initDragAndDrop);
         observer.observe(document.body, { childList: true, subtree: true });
     });
+
+   
+
 </script>
 <script async
         src="https://maps.googleapis.com/maps/api/js?key=@Configuration["ApiKeys:GoogleApiKey"]&libraries=places&loading=async&callback=initMap">

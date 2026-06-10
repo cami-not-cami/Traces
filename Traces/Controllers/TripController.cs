@@ -600,7 +600,8 @@ namespace Traces.Controllers
             return newPlace.PlIdPk;
         }
 
-        private async Task<IActionResult> SetBudget(int tripId, double budget)
+        [HttpPost]
+        public async Task<IActionResult> SetBudget(int tripId, double budget)
         {
             if(tripId != null && User.Identity.IsAuthenticated)
             {
@@ -613,14 +614,14 @@ namespace Traces.Controllers
                 }
                 catch (Exception ex)
                 {
-                    return Content($"Error setting budget: {ex.Message}");
+                    return StatusCode(500, $"Error setting budget: {ex.Message}");
                 }
+                return StatusCode(200, "Budget updated successfully");
             }
             else
             {
-                return Content("Must be logged in to set a budget for the trip.");
+                return StatusCode(401, "Must be logged in to set a budget for the trip.");
             }
-            return View();
         }
 
         private async Task LinkUserToTripAsync(int tripId)
