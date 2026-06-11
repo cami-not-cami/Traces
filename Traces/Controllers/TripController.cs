@@ -391,6 +391,118 @@ namespace Traces.Controllers
                 PlacesToVisit = placesToVisit
             };
         }
+        [HttpPatch]
+        public async Task<IActionResult> UpdateTripDetails(int tripId, string? title, string? description, string? startDate, string? endDate, string? placeName,
+            string? googlePlaceId,
+            string? latitude,
+            string? longitude,
+            string? address)
+        {
+            var trip = await _context.Trips.FirstOrDefaultAsync(t => t.TrIdPk == tripId);
+            if (trip == null) return NotFound();
+            if (!string.IsNullOrEmpty(title)) trip.Title = title;
+            if (!string.IsNullOrEmpty(description)) trip.Description = description;
+            if (DateOnly.TryParse(startDate, out var sDate)) trip.StartDate = sDate;
+            if (DateOnly.TryParse(endDate, out var eDate)) trip.EndDate = eDate;
+            if (!string.IsNullOrEmpty(placeName) || !string.IsNullOrEmpty(googlePlaceId) || !string.IsNullOrEmpty(latitude) || !string.IsNullOrEmpty(longitude))
+            {
+                decimal? lat = null;
+                if (!string.IsNullOrEmpty(latitude))
+                {
+                    if (decimal.TryParse(latitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedLat))
+                    {
+                        lat = parsedLat;
+                    }
+                    else if (decimal.TryParse(latitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out parsedLat))
+                    {
+                        lat = parsedLat;
+                    }
+                }
+                decimal? lng = null;
+                if (!string.IsNullOrEmpty(longitude))
+                {
+                    if (decimal.TryParse(longitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedLng))
+                    {
+                        lng = parsedLng;
+                    }
+                    else if (decimal.TryParse(longitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out parsedLng))
+                    {
+                        lng = parsedLng;
+                    }
+                }
+                var placeVm = new PlaceViewModel
+                {
+                    GooglePlaceId = googlePlaceId,
+                    Name = placeName ?? "Unnamed Place",
+                    Latitude = lat,
+                    Longitude = lng,
+                    FormattedAddress = address,
+                    PrimaryCategory = "Attraction"
+                };
+                int placeId = await GetOrCreatePlaceAsync(placeVm);
+                var day0 = await _context.TripDays
+                    .Include(d => d.TripActivities)
+                    .FirstOrDefaultAsync(d => d.TripFk == tripId && d.DayNumber == 0);
+                if (day0 == null)
+                {
+                    day0 = new TripDay
+                    {
+                        TripFk = tripId,
+                        DayNumber = 0,
+                        Date = DateOnly.MinValue
+                    };
+                    _context.TripDays.Add(day0);
+                    await _context.SaveChangesAsync();
+                }
+                
+                var oldPrimaryActivity = day0.TripActivities.FirstOrDefault(a => a.OrderIndex == 0);
+                int? oldPlaceId = oldPrimaryActivity?.PlaceFk;
+
+                if (oldPlaceId.HasValue && oldPlaceId.Value != placeId)
+                {
+                    var activitiesToDelete = await _context.TripActivities
+                        .Where(a => a.TripDayFkNavigation.TripFk == tripId && a.PlaceFk == oldPlaceId.Value)
+                        .ToListAsync();
+
+                    if (activitiesToDelete.Any())
+                    {
+                        var activityIds = activitiesToDelete.Select(a => a.TrAcIdPk).ToList();
+
+                        var checklists = await _context.Checklists.Where(c => c.TripActivityFk.HasValue && activityIds.Contains(c.TripActivityFk.Value)).ToListAsync();
+                        _context.Checklists.RemoveRange(checklists);
+
+                        var notes = await _context.Notes.Where(n => n.TripActivityFk.HasValue && activityIds.Contains(n.TripActivityFk.Value)).ToListAsync();
+                        _context.Notes.RemoveRange(notes);
+
+                        var routes = await _context.RouteToNexts.Where(r => activityIds.Contains(r.FromActivityFk) || activityIds.Contains(r.ToActivityFk)).ToListAsync();
+                        _context.RouteToNexts.RemoveRange(routes);
+
+                        _context.TripActivities.RemoveRange(activitiesToDelete);
+                    }
+                }
+
+                var existingActivity = await _context.TripActivities.FirstOrDefaultAsync(a => a.TripDayFk == day0.TrDaIdPk && a.PlaceFk == placeId);
+                if (existingActivity == null)
+                {
+                    var activity = new TripActivity
+                    {
+                        TripDayFk = day0.TrDaIdPk,
+                        PlaceFk = placeId,
+                        Status = "Attraction",
+                        OrderIndex = 0
+                    };
+                    _context.TripActivities.Add(activity);
+                }
+                else
+                {
+                    existingActivity.OrderIndex = 0;
+                }
+                _context.Trips.Update(trip);
+                await _context.SaveChangesAsync();
+                return StatusCode(200);
+            }
+            return StatusCode(200);
+        }
         [HttpPost]
         public async Task<IActionResult> AddActivityToTrip(
             int tripId,
@@ -474,29 +586,17 @@ namespace Traces.Controllers
             }
 
             decimal? lat = null;
-            if (!string.IsNullOrEmpty(latitude))
+            if (decimal.TryParse(latitude, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var parsedLat))
             {
-                if (decimal.TryParse(latitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedLat))
-                {
-                    lat = parsedLat;
-                }
-                else if (decimal.TryParse(latitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out parsedLat))
-                {
-                    lat = parsedLat;
-                }
+                lat = parsedLat;
             }
 
             decimal? lng = null;
-            if (!string.IsNullOrEmpty(longitude))
+            if (decimal.TryParse(longitude, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var parsedLng))
             {
-                if (decimal.TryParse(longitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var parsedLng))
-                {
-                    lng = parsedLng;
-                }
-                else if (decimal.TryParse(longitude, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.CurrentCulture, out parsedLng))
-                {
-                    lng = parsedLng;
-                }
+                lng = parsedLng;
             }
 
             var placeVm = new PlaceViewModel

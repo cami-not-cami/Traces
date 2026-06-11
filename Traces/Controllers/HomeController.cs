@@ -22,9 +22,16 @@ namespace Traces.Controllers
         }
         public IActionResult Index()
         {
+          ExploreCards();
             return View();
         }
-
+        public void ExploreCards()
+        {
+            var recentTrips = _context.Places
+                .Take(3).GroupBy(p => p.GooglePlaceId).ToList();
+            ;
+            
+        }
         public IActionResult Privacy()
         {
             return View();

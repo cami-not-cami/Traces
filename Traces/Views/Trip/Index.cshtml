@@ -13,12 +13,35 @@
         transform: scale(0.98);
     }
 
-    .activities-container.drag-over {
-        background-color: rgba(99, 102, 241, 0.03);
-        border: 2px dashed #c7d2fe; /* indigo-200 */
+    .activities-container {
+        min-height: 80px;
+        border: 2px dashed transparent;
         border-radius: 1rem;
-        padding: 0.75rem;
         transition: all 0.2s ease;
+    }
+
+    .activities-container:empty {
+        border: 2px dashed #e2e8f0; /* slate-200 */
+        background-color: #f8fafc; /* slate-50 */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 80px;
+    }
+
+    .activities-container:empty::after {
+        content: "Drag activities here";
+        color: #94a3b8; /* slate-400 */
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .activities-container.drag-over {
+        background-color: rgba(99, 102, 241, 0.05) !important;
+        border: 2px dashed #6366f1 !important; /* indigo-500 */
+        padding: 0.75rem;
     }
 
     .drag-handle {
@@ -126,35 +149,107 @@
             <div class="max-w-3xl mx-auto px-6 -mt-20 relative z-10 pb-20">
 
                 <!-- Trip Destination Badge -->
-                <div class="bg-white rounded-2xl shadow-xl shadow-slate-100/80 border border-slate-100 p-8 flex flex-col sm:flex-row justify-between items-start sm:items-end mb-12 transform transition-all duration-300 hover:shadow-2xl">
-                    <div class="mb-4 sm:mb-0">
-                        <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">@Model.Title</h1>
-                        @if (!string.IsNullOrEmpty(Model.Description))
-                        {
-                            <p class="text-slate-500 text-sm mb-3 leading-relaxed">@Model.Description</p>
-                        }
-                        <div class="flex items-center text-slate-500 text-sm font-medium mt-1">
-                            <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            @(Model.StartDate?.ToString("MMM dd, yyyy") ?? "Start Date") - @(Model.EndDate?.ToString("MMM dd, yyyy") ?? "End Date")
-                        </div>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <div class="flex -space-x-2">
-                            @foreach (var member in Model.Members.Take(3))
+                <div class="bg-white rounded-2xl shadow-xl shadow-slate-100/80 border border-slate-100 p-8 mb-12 transform transition-all duration-300 hover:shadow-2xl relative">
+                    
+                    <!-- Read-Only View -->
+                    <div id="trip-badge-view" class="flex flex-col sm:flex-row justify-between items-start sm:items-end w-full">
+                        <div class="mb-4 sm:mb-0 pr-8 relative group flex-1">
+                            <div class="flex items-center gap-3">
+                                <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">@Model.Title</h1>
+                                <button onclick="enterBadgeEditMode()" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-105 rounded-lg transition-all" title="Edit Trip Details">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                    </svg>
+                                </button>
+                            </div>
+                            @if (!string.IsNullOrEmpty(Model.Description))
                             {
-                                var initial1 = !string.IsNullOrEmpty(member.FirstName) ? member.FirstName[0].ToString() : "";
-                                var initial2 = !string.IsNullOrEmpty(member.LastName) ? member.LastName[0].ToString() : "";
-                                var initials = (initial1 + initial2).ToUpper();
-                                if (string.IsNullOrEmpty(initials)) initials = "U";
-                                <div class="w-9 h-9 rounded-full border-2 border-white bg-indigo-150 flex items-center justify-center text-xs font-bold text-indigo-700 shadow-md" title="@member.FullName">
-                                    @initials
-                                </div>
+                                <p class="text-slate-500 text-sm mb-3 leading-relaxed">@Model.Description</p>
                             }
+                            <div class="flex items-center text-slate-500 text-sm font-medium mt-1">
+                                <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                @(Model.StartDate?.ToString("MMM dd, yyyy") ?? "Start Date") - @(Model.EndDate?.ToString("MMM dd, yyyy") ?? "End Date")
+                            </div>
                         </div>
-                        <div class="w-9 h-9 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-xs text-slate-500 font-bold shadow-md hover:bg-slate-100 cursor-pointer transition-colors" title="Invite Friends">
-                            +👤
+                        <div class="flex items-center space-x-2 shrink-0">
+                            <div class="flex -space-x-2">
+                                @foreach (var member in Model.Members.Take(3))
+                                {
+                                    var initial1 = !string.IsNullOrEmpty(member.FirstName) ? member.FirstName[0].ToString() : "";
+                                    var initial2 = !string.IsNullOrEmpty(member.LastName) ? member.LastName[0].ToString() : "";
+                                    var initials = (initial1 + initial2).ToUpper();
+                                    if (string.IsNullOrEmpty(initials)) initials = "U";
+                                    <div class="w-9 h-9 rounded-full border-2 border-white bg-indigo-150 flex items-center justify-center text-xs font-bold text-indigo-700 shadow-md" title="@member.FullName">
+                                        @initials
+                                    </div>
+                                }
+                            </div>
+                            <div class="w-9 h-9 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-xs text-slate-500 font-bold shadow-md hover:bg-slate-100 cursor-pointer transition-colors" title="Invite Friends">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                    <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
+                                </svg>
+
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Edit View (Hidden by default) -->
+                    <div id="trip-badge-edit" class="hidden w-full">
+                        <form id="trip-badge-edit-form" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="relative">
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Destination Location</label>
+                                    <div class="relative">
+                                        <span class="absolute left-3.5 top-3 text-slate-400 text-sm">📍</span>
+                                        <input type="hidden" id="editTripPlaceId" name="googlePlaceId" value="@(Model.PlacesToVisit.FirstOrDefault()?.GooglePlaceId)" />
+                                        <input type="hidden" id="editTripLat" name="latitude" value="@(Model.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture))" />
+                                        <input type="hidden" id="editTripLng" name="longitude" value="@(Model.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture))" />
+                                        <input type="hidden" id="editTripAddress" name="formattedAddress" value="@(Model.PlacesToVisit.FirstOrDefault()?.FormattedAddress)" />
+                                        <input type="hidden" id="editTripPlaceName" name="placeName" value="@(Model.PlacesToVisit.FirstOrDefault()?.Name)" />
+                                        
+                                        <input type="text" id="editTripLocationInput" autocomplete="off" placeholder="Where to? (e.g. Vienna, Paris...)"
+                                               class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm placeholder-slate-400 outline-none transition-all"
+                                               value="@Model.Title" />
+                                    </div>
+                                    <div id="edit-trip-suggestions" class="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto hidden z-50"></div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Short Description</label>
+                                    <input type="text" id="editTripDescription" name="description" placeholder="A short description of the trip..."
+                                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm placeholder-slate-400 outline-none transition-all"
+                                           value="@Model.Description" />
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Start Date</label>
+                                    <input type="date" id="editTripStartDate" name="startDate" 
+                                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-500 text-sm outline-none transition-all"
+                                           value="@(Model.StartDate?.ToString("yyyy-MM-dd"))" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">End Date</label>
+                                    <input type="date" id="editTripEndDate" name="endDate" 
+                                           class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-500 text-sm outline-none transition-all"
+                                           value="@(Model.EndDate?.ToString("yyyy-MM-dd"))" />
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end space-x-2 pt-2">
+                                <button type="button" onclick="exitBadgeEditMode()" 
+                                        class="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs sm:text-sm font-semibold transition-all">
+                                    Cancel
+                                </button>
+                                <button type="submit" 
+                                        class="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/20 text-white px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all">
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
                 </div>
 
                 <!-- 1. PLACES TO VISIT (UNSCHEDULED BUCKET) -->
@@ -337,19 +432,220 @@
 </div>
 
 <script>
+    function enterBadgeEditMode() {
+        document.getElementById("trip-badge-view").classList.add("hidden");
+        document.getElementById("trip-badge-edit").classList.remove("hidden");
+        document.getElementById("editTripLocationInput").focus();
+    }
+
+    function exitBadgeEditMode() {
+        document.getElementById("trip-badge-view").classList.remove("hidden");
+        document.getElementById("trip-badge-edit").classList.add("hidden");
+    }
+
+    // Initialize badge autocomplete
+    document.addEventListener("DOMContentLoaded", () => {
+        const input = document.getElementById("editTripLocationInput");
+        const dropdown = document.getElementById("edit-trip-suggestions");
+        const form = document.getElementById("trip-badge-edit-form");
+        let debounceTimer;
+
+        if (input && dropdown) {
+            input.addEventListener("input", function () {
+                clearTimeout(debounceTimer);
+                const query = this.value.trim();
+
+                // Reset hidden fields when typing new location
+                document.getElementById("editTripPlaceId").value = '';
+                document.getElementById("editTripLat").value = '';
+                document.getElementById("editTripLng").value = '';
+                document.getElementById("editTripAddress").value = '';
+                document.getElementById("editTripPlaceName").value = '';
+
+                if (query.length < 3) {
+                    dropdown.innerHTML = '';
+                    dropdown.classList.add('hidden');
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetchBadgeSuggestions(query, dropdown, input);
+                }, 300);
+            });
+
+            document.addEventListener('click', function (e) {
+                if (e.target !== input && !dropdown.contains(e.target)) {
+                    dropdown.innerHTML = '';
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        async function fetchBadgeSuggestions(query, dropdown, input) {
+            try {
+                let url = `/Home/Autocomplete?textInput=${encodeURIComponent(query)}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Request failed");
+                const data = await response.json();
+                renderBadgeDropdown(data.suggestions || [], dropdown, input);
+            } catch (error) {
+                console.error("Error fetching suggestions", error);
+            }
+        }
+
+        function renderBadgeDropdown(suggestions, dropdown, input) {
+            dropdown.innerHTML = '';
+            if (suggestions.length === 0) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            suggestions.forEach(item => {
+                const textValue = item.placePrediction.text.text;
+                const placeId = item.placePrediction.placeId;
+
+                const row = document.createElement('div');
+                row.className = 'px-4 py-2.5 text-sm text-slate-700 hover:bg-indigo-50 cursor-pointer transition-colors';
+                row.textContent = textValue;
+
+                row.addEventListener('click', async () => {
+                    input.value = textValue;
+                    dropdown.innerHTML = '';
+                    dropdown.classList.add('hidden');
+
+                    document.getElementById("editTripPlaceId").value = placeId;
+
+                    // Fetch details from backend
+                    try {
+                        const detailsResponse = await fetch(`/Home/PlaceDetails?placeId=${placeId}`);
+                        if (detailsResponse.ok) {
+                            const details = await detailsResponse.json();
+                            document.getElementById("editTripLat").value = details.location?.latitude || '';
+                            document.getElementById("editTripLng").value = details.location?.longitude || '';
+                            document.getElementById("editTripAddress").value = details.formattedAddress || '';
+                            document.getElementById("editTripPlaceName").value = details.displayName?.text || textValue;
+                        }
+                    } catch (error) {
+                        console.error("Error fetching place details", error);
+                    }
+                });
+
+                dropdown.appendChild(row);
+            });
+
+            dropdown.classList.remove('hidden');
+        }
+
+        if (form) {
+            form.addEventListener("submit", function (e) {
+                e.preventDefault();
+
+                const placeId = document.getElementById("editTripPlaceId").value || "@(Model.PlacesToVisit?.FirstOrDefault()?.GooglePlaceId)";
+                const startDate = document.getElementById("editTripStartDate").value;
+                const endDate = document.getElementById("editTripEndDate").value;
+                const description = document.getElementById("editTripDescription").value;
+                const locationText = document.getElementById("editTripLocationInput").value;
+
+                if (!locationText.trim()) {
+                    alert("Please select a location.");
+                    return;
+                }
+
+                const tripId = @Model.TripId;
+
+                if (tripId === 0) {
+                    // Unsaved trip: redirect to re-render client-side GET view with new parameters
+                    window.location.href = `/Trip?placeId=${encodeURIComponent(placeId)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+                } else {
+                    // Saved trip: mock behavior for now (UI changes logged, exit edit mode)
+                    console.log("Mock Save Trip details:", {
+                        tripId: tripId,
+                        title: locationText,
+                        description: description,
+                        startDate: startDate,
+                        endDate: endDate,
+                        placeId: placeId,
+                        latitude: document.getElementById("editTripLat").value,
+                        longitude: document.getElementById("editTripLng").value,
+                        address: document.getElementById("editTripAddress").value,
+                        placeName: document.getElementById("editTripPlaceName").value
+                    });
+                     $.ajax({
+            url: "@Url.Action("UpdateTripDetails", "Trip")",
+            type: "PATCH",
+            data: { 
+                tripId: tripId,
+                title: locationText,
+                description : description,
+                startDate :startDate,
+                endDate: endDate,
+                googlePlaceId: placeId,
+                placeName: document.getElementById("editTripPlaceName").value,
+                latitude: document.getElementById("editTripLat").value,
+                longitude: document.getElementById("editTripLng").value,
+                address: document.getElementById("editTripAddress").value
+            },
+            success: function (data, textStatus, xhr) {
+            // fires on 200–299
+            location.reload();
+            console.log('Success:', xhr.status); // 200
+        },
+            error: function (xhr, textStatus, errorThrown) {
+            // fires on 4xx / 5xx
+            switch (xhr.status) {
+                case 400:
+                    alert('Bad request');
+                    break;
+                case 401:
+                    alert('Unauthorized');
+                    break;
+                case 404:
+                    alert('Not found');
+                    break;
+                case 500:
+                    alert('Server error');
+                    break;
+                default:
+                    alert('Error: ' + xhr.status);
+              }
+            }
+             });
+                    exitBadgeEditMode();
+                }
+            });
+        }
+    });
+
      function saveBudget(tripId){
         const budget = document.getElementById("budget").value;
         $.ajax({
             url: "@Url.Action("SetBudget", "Trip")",
             type: "POST",
             data: { tripId: tripId, budget: budget },
-           success: function(result) {
-                 alert('yeap');
-             },
-    error: function(XMLHttpRequest, textStatus, errorThrown) {
-        alert(errorThrown);
-    }
-        });
+            success: function (data, textStatus, xhr) {
+            // fires on 200–299
+            console.log('Success:', xhr.status); // 200
+        },
+            error: function (xhr, textStatus, errorThrown) {
+            // fires on 4xx / 5xx
+            switch (xhr.status) {
+                case 400:
+                    alert('Bad request');
+                    break;
+                case 401:
+                    alert('Unauthorized');
+                    break;
+                case 404:
+                    alert('Not found');
+                    break;
+                case 500:
+                    alert('Server error');
+                    break;
+                default:
+                    alert('Error: ' + xhr.status);
+              }
+            }
+             });
     }
 
     let map;
