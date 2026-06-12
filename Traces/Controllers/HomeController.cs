@@ -27,10 +27,17 @@ namespace Traces.Controllers
         }
         public void ExploreCards()
         {
-            var recentTrips = _context.Places
-                .Take(3).GroupBy(p => p.GooglePlaceId).ToList();
-            ;
-            
+            var recentTrips = _context.Trips
+             .GroupBy(p => p.Title)
+             .Select(g => new
+             {
+                 GooglePlaceId = g.Key,
+                 VisitCount = g.Count(),
+                 Place = g.First()
+             })
+             .OrderByDescending(x => x.VisitCount)
+             .Take(3)
+             .ToList();
         }
         public IActionResult Privacy()
         {
