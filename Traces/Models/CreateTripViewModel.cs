@@ -4,7 +4,7 @@ namespace Traces.Models
 {
     public class CreateTripViewModel
     {
-     
+
         public int TripId { get; set; }
         public string Title { get; set; }
         public string Description { get; set; }
@@ -21,12 +21,12 @@ namespace Traces.Models
         public List<PlaceViewModel> PlacesToVisit { get; set; } = new();
     }
 
-   
+
 
     public class TripMemberInfo
     {
         public int TripMemberId { get; set; }
-        public string UserId { get; set; }       
+        public string UserId { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string FullName => $"{FirstName} {LastName}";
@@ -52,7 +52,7 @@ namespace Traces.Models
         public DateTime? EndTime { get; set; }
         public int OrderIndex { get; set; }
         public string Status { get; set; }
-        
+
 
         public PlaceViewModel Place { get; set; }
         public RouteToNext RouteToNext { get; set; }
@@ -73,5 +73,6 @@ namespace Traces.Models
         public string? CoverPhoto { get; set; }
         public string? CountryName { get; set; }
     }
+
 }
 

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Diagnostics;
@@ -10,40 +11,67 @@ namespace Traces.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
-        
+
         private readonly TracesDbContext _context;
         private readonly GooglePlacesService _googlePlacesService;
-      
+
         public HomeController(ILogger<HomeController> logger, IOptions<Settings> settings, TracesDbContext context, GooglePlacesService googlePlacesService)
         {
             _logger = logger;
             _context = context;
             _googlePlacesService = googlePlacesService;
         }
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-          ExploreCards();
-            return View();
+            var topCountries = await _context.TripActivities
+                .Include(a => a.PlaceFkNavigation)
+                .Where(a => a.PlaceFkNavigation != null && !string.IsNullOrEmpty(a.PlaceFkNavigation.CountryName))
+                .GroupBy(a => a.PlaceFkNavigation.CountryName)
+                .Select(g => new ExploreCardViewModel
+                {
+                    CountryName = g.Key,
+                    TripCount = g.Select(x => x.TripDayFkNavigation.TripFk).Distinct().Count(),
+                    // Grab first photo if available, otherwise use a placeholder
+                    CoverPhoto = g.SelectMany(x => x.PlaceFkNavigation.PlacePhotos)
+                                  .Select(p => p.GooglePhotoReference)
+                                  .FirstOrDefault() ?? "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=600&q=80"
+                })
+                .OrderByDescending(c => c.TripCount)
+                .Take(3)
+                .ToListAsync();
+
+            foreach (var country in topCountries)
+            {
+                country.CardLabel = country.TripCount == 1 ? "1 Trip" : $"{country.TripCount} Trips";
+                country.Description = $"Discover the beauty of {country.CountryName} with {country.TripCount} custom {(country.TripCount == 1 ? "trip" : "trips")} created by our community.";
+            }
+
+            return View(topCountries);
         }
         public void ExploreCards()
         {
             var recentTrips = _context.Trips
-             .GroupBy(p => p.Title)
-             .Select(g => new
-             {
-                 GooglePlaceId = g.Key,
-                 VisitCount = g.Count(),
-                 Place = g.First()
-             })
-             .OrderByDescending(x => x.VisitCount)
-             .Take(3)
-             .ToList();
+                          .Include(t => t.TripDays)
+                          .ThenInclude(d => d.TripActivities)
+                          .ThenInclude(a => a.PlaceFkNavigation)
+                          .SelectMany(t => t.TripDays)
+                          .SelectMany(d => d.TripActivities)
+                          .GroupBy(a => a.PlaceFkNavigation.CountryName)
+                          .Select(g => new
+                          {
+                             CountryName = g.Key,
+                             TripCount = g.Count(),
+                             Place = g.First().PlaceFkNavigation
+                          })
+                                 .OrderByDescending(x => x.TripCount)
+                                 .Take(3)
+                                 .ToList();
         }
         public IActionResult Privacy()
         {
             return View();
         }
-       
+
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
@@ -51,7 +79,7 @@ namespace Traces.Controllers
         }
         public async Task<IActionResult> Autocomplete(string textInput, double? latitude = null, double? longitude = null)
         {
-         
+
             var jsonResponse = await _googlePlacesService.GetAutocomplete(textInput, latitude, longitude);
             return Content(jsonResponse, "application/json");
         }
@@ -63,7 +91,7 @@ namespace Traces.Controllers
         [HttpPost]
         public async Task<IActionResult> SwitchToTripPlanning(string placeId, DateOnly? startDate, DateOnly? endDate)
         {
-           
+
             if (string.IsNullOrEmpty(placeId))
             {
                 ModelState.AddModelError("PlaceId", "Please select a valid location.");
