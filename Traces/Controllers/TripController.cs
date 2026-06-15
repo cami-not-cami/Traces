@@ -352,6 +352,7 @@ namespace Traces.Controllers
                                 City = a.PlaceFkNavigation.City,
                                 PrimaryCategory = a.PlaceFkNavigation.PrimaryCategory,
                                 CoverPhoto = a.PlaceFkNavigation.PlacePhotos.FirstOrDefault()?.GooglePhotoReference
+                             //   CountryName = a.PlaceFkNavigation.CountryName
                             },
                             ChecklistItems = a.Checklists.ToList()
                         })

@@ -263,7 +263,7 @@
                         <div class="flex flex-wrap gap-3 mb-4">
                             @foreach (var place in Model.PlacesToVisit)
                             {
-                                <div class="bg-indigo-50/50 hover:bg-indigo-55 border border-indigo-100 rounded-xl px-4 py-2.5 text-sm font-semibold text-indigo-700 flex items-center transition-all">
+                                <div class="bg-indigo-50/50 hover:bg-indigo-55 border border-indigo-100 rounded-xl px-4 py-2.5 text-sm font-semibold text-indigo-700 flex items-center transition-all cursor-pointer hover:border-indigo-300" onclick="showPlaceDetailsPopup('@place.GooglePlaceId')">
                                     <span class="mr-2">📍</span> @place.Name
                                 </div>
                             }
@@ -344,7 +344,7 @@
                                                             </span>
                                                         }
                                                     </div>
-                                                    <h4 class="font-bold text-slate-900 text-base leading-snug">@activity.Place?.Name</h4>
+                                                    <h4 class="font-bold text-slate-900 text-base leading-snug hover:text-indigo-600 hover:underline cursor-pointer" onclick="showPlaceDetailsPopup('@activity.Place?.GooglePlaceId')">@activity.Place?.Name</h4>
                                                     <p class="text-xs text-slate-450">@activity.Place?.FormattedAddress</p>
 
                                                     @if (activity.ChecklistItems != null && activity.ChecklistItems.Count > 0)
@@ -431,7 +431,333 @@
 
 </div>
 
+<!-- PLACE DETAILS FLOATING DRAWER (Wanderlog style) -->
+<div id="place-details-modal" class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100%-2rem)] sm:w-[420px] max-h-[80vh] sm:max-h-[75vh] pointer-events-none flex flex-col hidden transition-opacity duration-300 opacity-0">
+    <div id="place-details-card" class="bg-white rounded-3xl shadow-2xl border border-slate-200/80 w-full max-h-full overflow-hidden transform scale-95 opacity-0 transition-all duration-300 flex flex-col pointer-events-auto">
+        <!-- Header Image area -->
+        <div class="relative h-40 sm:h-48 bg-slate-100 shrink-0">
+            <img id="modal-cover-photo" class="w-full h-full object-cover" src="" alt="Place Photo" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+            <button onclick="closePlaceDetailsModal()" class="absolute top-4 right-4 bg-black/40 hover:bg-black/60 text-white rounded-full p-2 transition-colors focus:outline-none">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+            <div class="absolute bottom-4 left-6 right-6">
+                <span id="modal-category" class="bg-indigo-650 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider mb-2 inline-block">Attraction</span>
+                <h2 id="modal-title" class="text-lg sm:text-xl font-black text-white leading-tight">Place Name</h2>
+            </div>
+        </div>
+
+        <!-- Scrollable details container -->
+        <div class="p-5 sm:p-6 space-y-5 overflow-y-auto">
+            <!-- Loading indicator -->
+            <div id="modal-loading" class="flex flex-col items-center justify-center py-12 space-y-3">
+                <div class="animate-spin rounded-full h-10 w-10 border-4 border-indigo-500 border-t-transparent"></div>
+                <p class="text-sm font-semibold text-slate-500">Fetching details...</p>
+            </div>
+
+            <!-- Content -->
+            <div id="modal-content" class="space-y-5 hidden">
+                <!-- Overview Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6 border-b border-slate-100">
+                    <div class="space-y-3">
+                        <div class="flex items-center space-x-2">
+                            <span id="modal-rating-num" class="text-2xl font-black text-slate-800">0.0</span>
+                            <div id="modal-stars" class="flex text-amber-400"></div>
+                            <span id="modal-rating-count" class="text-xs text-slate-400 font-semibold">(0 reviews)</span>
+                        </div>
+                        <div class="flex items-start text-sm text-slate-600">
+                            <span class="mr-2 text-base shrink-0">📍</span>
+                            <span id="modal-address" class="leading-relaxed">Address info</span>
+                        </div>
+                    </div>
+                    <div class="space-y-2 text-sm text-slate-600 sm:border-l border-slate-100 sm:pl-6 flex flex-col justify-center">
+                        <div id="modal-phone-container" class="flex items-center">
+                            <span class="mr-2 text-base">📞</span>
+                            <span id="modal-phone">No phone number available</span>
+                        </div>
+                        <div id="modal-website-container" class="flex items-center mt-1">
+                            <span class="mr-2 text-base">🌐</span>
+                            <a id="modal-website" href="#" target="_blank" class="text-indigo-600 hover:text-indigo-805 hover:underline font-semibold break-all">Visit Website</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Editorial Summary -->
+                <div id="modal-summary-container" class="space-y-2 hidden">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">About</h3>
+                    <p id="modal-summary" class="text-slate-600 text-sm leading-relaxed"></p>
+                </div>
+
+                <!-- Opening Hours -->
+                <div id="modal-hours-container" class="space-y-2 border-t border-slate-100 pt-5 hidden">
+                    <button onclick="toggleModalHours()" class="w-full flex items-center justify-between text-left text-xs font-bold text-slate-450 uppercase tracking-wider focus:outline-none">
+                        <span>Opening Hours</span>
+                        <svg id="hours-arrow" class="w-4 h-4 text-slate-505 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="modal-hours" class="hidden text-xs text-slate-600 space-y-1.5 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1"></div>
+                </div>
+
+                <!-- Reviews -->
+                <div id="modal-reviews-container" class="space-y-4 border-t border-slate-100 pt-5 hidden">
+                    <h3 class="text-xs font-bold text-slate-455 uppercase tracking-wider">Recent Reviews</h3>
+                    <div id="modal-reviews" class="space-y-4 divide-y divide-slate-100"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+    const googleApiKey = '@Configuration["ApiKeys:GoogleApiKey"]';
+
+    async function showPlaceDetailsPopup(placeId) {
+        if (!placeId) {
+            console.warn("No Google Place ID provided.");
+            return;
+        }
+
+        const modal = document.getElementById("place-details-modal");
+        const card = document.getElementById("place-details-card");
+        const loading = document.getElementById("modal-loading");
+        const content = document.getElementById("modal-content");
+
+        // Show modal wrapper and animate card scale/opacity
+        modal.classList.remove("hidden");
+        setTimeout(() => {
+            modal.classList.remove("opacity-0");
+            modal.classList.add("opacity-100");
+            card.classList.remove("scale-95", "opacity-0");
+            card.classList.add("scale-100", "opacity-100");
+        }, 10);
+
+        loading.classList.remove("hidden");
+        content.classList.add("hidden");
+
+        try {
+            const response = await fetch(`/Home/PlaceDetails?placeId=${encodeURIComponent(placeId)}`);
+            if (!response.ok) throw new Error("Failed to fetch place details.");
+            const data = await response.json();
+
+            populatePlaceDetails(data);
+        } catch (error) {
+            console.error("Error loading place details:", error);
+            document.getElementById("modal-title").textContent = "Error Loading Details";
+            document.getElementById("modal-address").textContent = "Could not fetch details for this location.";
+            loading.classList.add("hidden");
+            content.classList.remove("hidden");
+        }
+    }
+
+    function populatePlaceDetails(data) {
+        const loading = document.getElementById("modal-loading");
+        const content = document.getElementById("modal-content");
+
+        // Title & Category
+        const titleEl = document.getElementById("modal-title");
+        const catEl = document.getElementById("modal-category");
+        const name = data.displayName?.text || "Unnamed Place";
+        titleEl.textContent = name;
+
+        // Try to extract category
+        let category = "Attraction";
+        if (data.types) {
+            if (data.types.includes('restaurant') || data.types.includes('food') || data.types.includes('cafe')) {
+                category = 'Food & Drink';
+            } else if (data.types.includes('lodging')) {
+                category = 'Lodging';
+            } else if (data.types.includes('transit_station') || data.types.includes('subway_station') || data.types.includes('train_station')) {
+                category = 'Transit';
+            } else if (data.types.includes('shopping_mall') || data.types.includes('store')) {
+                category = 'Shopping';
+            }
+        }
+        catEl.textContent = category;
+
+        // Image
+        const imgEl = document.getElementById("modal-cover-photo");
+        if (data.photos && data.photos.length > 0) {
+            const photoName = data.photos[0].name;
+            imgEl.src = `https://places.googleapis.com/v1/${photoName}/media?key=${googleApiKey}&maxWidthPx=800`;
+        } else {
+            imgEl.src = `https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80`;
+        }
+
+        // Rating & Stars
+        const ratingNumEl = document.getElementById("modal-rating-num");
+        const ratingCountEl = document.getElementById("modal-rating-count");
+        const starsContainer = document.getElementById("modal-stars");
+        starsContainer.innerHTML = "";
+
+        const rating = data.rating || 0;
+        ratingNumEl.textContent = rating.toFixed(1);
+        ratingCountEl.textContent = `(${data.userRatingCount || 0} reviews)`;
+
+        // Draw Stars
+        const fullStars = Math.floor(rating);
+        const hasHalf = rating % 1 >= 0.5;
+        for (let i = 1; i <= 5; i++) {
+            let starSvg = "";
+            if (i <= fullStars) {
+                starSvg = `<svg class="w-5 h-5 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>`;
+            } else if (i === fullStars + 1 && hasHalf) {
+                starSvg = `<svg class="w-5 h-5 fill-current viewBox="0 0 20 20"><defs><linearGradient id="halfStar"><stop offset="50%" stop-color="currentColor"/><stop offset="50%" stop-color="#cbd5e1"/></linearGradient></defs><path fill="url(#halfStar)" d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>`;
+            } else {
+                starSvg = `<svg class="w-5 h-5 fill-current text-slate-200" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>`;
+            }
+            starsContainer.innerHTML += starSvg;
+        }
+
+        // Address
+        document.getElementById("modal-address").textContent = data.formattedAddress || "No address provided.";
+
+        // Phone
+        const phoneContainer = document.getElementById("modal-phone-container");
+        const phoneEl = document.getElementById("modal-phone");
+        if (data.nationalPhoneNumber || data.internationalPhoneNumber) {
+            phoneEl.textContent = data.nationalPhoneNumber || data.internationalPhoneNumber;
+            phoneContainer.classList.remove("hidden");
+        } else {
+            phoneContainer.classList.add("hidden");
+        }
+
+        // Website
+        const websiteContainer = document.getElementById("modal-website-container");
+        const websiteEl = document.getElementById("modal-website");
+        if (data.websiteUri) {
+            websiteEl.href = data.websiteUri;
+            websiteEl.textContent = data.websiteUri.replace(/^https?:\/\/(www\.)?/, '').split('/')[0];
+            websiteContainer.classList.remove("hidden");
+        } else {
+            websiteContainer.classList.add("hidden");
+        }
+
+        // Editorial Summary
+        const summaryContainer = document.getElementById("modal-summary-container");
+        const summaryEl = document.getElementById("modal-summary");
+        if (data.editorialSummary && data.editorialSummary.text) {
+            summaryEl.textContent = data.editorialSummary.text;
+            summaryContainer.classList.remove("hidden");
+        } else {
+            summaryContainer.classList.add("hidden");
+        }
+
+        // Opening Hours
+        const hoursContainer = document.getElementById("modal-hours-container");
+        const hoursEl = document.getElementById("modal-hours");
+        hoursEl.innerHTML = "";
+        if (data.regularOpeningHours && data.regularOpeningHours.weekdayDescriptions) {
+            data.regularOpeningHours.weekdayDescriptions.forEach(desc => {
+                const parts = desc.split(": ");
+                const day = parts[0];
+                const time = parts[1] || "";
+                hoursEl.innerHTML += `<div class="flex justify-between border-b border-slate-50 pb-1"><span class="font-semibold text-slate-700">${day}</span><span class="text-slate-500">${time}</span></div>`;
+            });
+            hoursContainer.classList.remove("hidden");
+        } else {
+            hoursContainer.classList.add("hidden");
+        }
+
+        // Close opening hours list by default
+        const hoursList = document.getElementById("modal-hours");
+        const arrow = document.getElementById("hours-arrow");
+        hoursList.classList.add("hidden");
+        arrow.classList.remove("rotate-180");
+
+        // Reviews
+        const reviewsContainer = document.getElementById("modal-reviews-container");
+        const reviewsEl = document.getElementById("modal-reviews");
+        reviewsEl.innerHTML = "";
+        if (data.reviews && data.reviews.length > 0) {
+            data.reviews.forEach(review => {
+                let reviewStars = "";
+                const r = review.rating || 0;
+                for (let i = 1; i <= 5; i++) {
+                    if (i <= r) {
+                        reviewStars += `<svg class="w-3.5 h-3.5 fill-current text-amber-400" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>`;
+                    } else {
+                        reviewStars += `<svg class="w-3.5 h-3.5 fill-current text-slate-200" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>`;
+                    }
+                }
+
+                const authorPhoto = review.authorAttribution?.photoUri || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=32&h=32";
+                const authorName = review.authorAttribution?.displayName || "Anonymous";
+                const timeDesc = review.relativePublishTimeDescription || "";
+                const text = review.text?.text || "";
+
+                reviewsEl.innerHTML += `
+                    <div class="pt-4 first:pt-0 space-y-2">
+                        <div class="flex items-center space-x-2.5">
+                            <img class="w-8 h-8 rounded-full border border-slate-100 object-cover" src="${authorPhoto}" alt="${authorName}" onerror="this.src='https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=32&h=32'" />
+                            <div>
+                                <div class="text-xs font-bold text-slate-800">${authorName}</div>
+                                <div class="flex items-center space-x-1.5 mt-0.5">
+                                    <div class="flex">${reviewStars}</div>
+                                    <span class="text-[10px] text-slate-400 font-semibold">${timeDesc}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-600 leading-relaxed pl-10">${text}</p>
+                    </div>
+                `;
+            });
+            reviewsContainer.classList.remove("hidden");
+        } else {
+            reviewsContainer.classList.add("hidden");
+        }
+
+        loading.classList.add("hidden");
+        content.classList.remove("hidden");
+    }
+
+    function closePlaceDetailsModal() {
+        const modal = document.getElementById("place-details-modal");
+        const card = document.getElementById("place-details-card");
+
+        card.classList.remove("scale-100", "opacity-100");
+        card.classList.add("scale-95", "opacity-0");
+        modal.classList.remove("opacity-100");
+        modal.classList.add("opacity-0");
+
+        setTimeout(() => {
+            modal.classList.add("hidden");
+        }, 300);
+    }
+
+    function toggleModalHours() {
+        const hours = document.getElementById("modal-hours");
+        const arrow = document.getElementById("hours-arrow");
+        if (hours.classList.contains("hidden")) {
+            hours.classList.remove("hidden");
+            arrow.classList.add("rotate-180");
+        } else {
+            hours.classList.add("hidden");
+            arrow.classList.remove("rotate-180");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener("click", (e) => {
+            const modal = document.getElementById("place-details-modal");
+            const card = document.getElementById("place-details-card");
+            if (modal && !modal.classList.contains("hidden")) {
+                const clickedInsideCard = card.contains(e.target);
+                const clickedTrigger = e.target.closest('[onclick^="showPlaceDetailsPopup"]');
+                if (!clickedInsideCard && !clickedTrigger) {
+                    closePlaceDetailsModal();
+                }
+            }
+        });
+
+        document.addEventListener("keydown", (e) => {
+            const modal = document.getElementById("place-details-modal");
+            if (e.key === "Escape" && modal && !modal.classList.contains("hidden")) {
+                closePlaceDetailsModal();
+            }
+        });
+    });
+
     function enterBadgeEditMode() {
         document.getElementById("trip-badge-view").classList.add("hidden");
         document.getElementById("trip-badge-edit").classList.remove("hidden");

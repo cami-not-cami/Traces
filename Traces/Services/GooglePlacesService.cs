@@ -34,7 +34,8 @@ namespace Traces.Services
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
 
                 request.Headers.Add("X-Goog-Api-Key", _googleApiKey);
-                request.Headers.Add("X-Goog-FieldMask", "displayName,formattedAddress,location,photos");
+                request.Headers.Add("X-Goog-FieldMask", "displayName,formattedAddress,location,photos,rating," +
+                    "userRatingCount,reviews,nationalPhoneNumber,websiteUri,regularOpeningHours,editorialSummary,priceLevel");
                 try
                 {
                     var response = await _httpClient.SendAsync(request);
