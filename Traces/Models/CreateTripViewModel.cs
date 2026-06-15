@@ -71,6 +71,7 @@ namespace Traces.Models
         public string FormattedAddress { get; set; }
         public string City { get; set; }
         public string? CoverPhoto { get; set; }
+        public string? CountryName { get; set; }
     }
 }
 

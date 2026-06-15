@@ -655,19 +655,82 @@ namespace Traces.Controllers
             var existing = await _context.Places.Include(p => p.PlacePhotos).FirstOrDefaultAsync(p => p.GooglePlaceId == placeVm.GooglePlaceId);
             if (existing != null)
             {
+                bool updated = false;
+
+                // Backfill City and CountryName if they are currently missing
+                string backfillCountry = "";
+                string backfillCity = "";
+                bool needBackfill = string.IsNullOrEmpty(existing.CountryName) || string.IsNullOrEmpty(existing.City);
+                if (needBackfill && !string.IsNullOrEmpty(existing.FormattedAddress))
+                {
+                    var parts = existing.FormattedAddress.Split(',').Select(p => p.Trim()).ToList();
+                    if (parts.Count > 0)
+                    {
+                        backfillCountry = parts.Last();
+                        if (parts.Count > 1)
+                        {
+                            var cityCandidate = parts[parts.Count - 2];
+                            if (parts.Count > 2 && (backfillCountry.Equals("USA", StringComparison.OrdinalIgnoreCase) || 
+                                                    backfillCountry.Equals("United States", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                cityCandidate = parts[parts.Count - 3];
+                            }
+                            backfillCity = System.Text.RegularExpressions.Regex.Replace(cityCandidate, @"\b\w*\d\w*\b", "").Trim();
+                            backfillCity = System.Text.RegularExpressions.Regex.Replace(backfillCity, @"\s+", " ");
+                        }
+                    }
+                }
+
+                if (string.IsNullOrEmpty(existing.CountryName) && !string.IsNullOrEmpty(backfillCountry))
+                {
+                    existing.CountryName = backfillCountry;
+                    updated = true;
+                }
+                if (string.IsNullOrEmpty(existing.City) && !string.IsNullOrEmpty(backfillCity))
+                {
+                    existing.City = backfillCity;
+                    updated = true;
+                }
+
                 if (!existing.PlacePhotos.Any() && !string.IsNullOrEmpty(placeVm.CoverPhoto))
                 {
-                    var maxPhotoId = await _context.PlacePhotos.Select(p => (int?)p.PlPhIdPk).MaxAsync() ?? 0;
                     var newPhoto = new PlacePhoto
                     {
-                        PlPhIdPk = maxPhotoId + 1,
                         PlacesFk = existing.PlIdPk,
                         GooglePhotoReference = placeVm.CoverPhoto
                     };
                     _context.PlacePhotos.Add(newPhoto);
+                    updated = true;
+                }
+
+                if (updated)
+                {
                     await _context.SaveChangesAsync();
                 }
                 return existing.PlIdPk;
+            }
+
+            // Parse City and CountryName for new place
+            string parsedCountry = "";
+            string parsedCity = "";
+            if (!string.IsNullOrEmpty(placeVm.FormattedAddress))
+            {
+                var parts = placeVm.FormattedAddress.Split(',').Select(p => p.Trim()).ToList();
+                if (parts.Count > 0)
+                {
+                    parsedCountry = parts.Last();
+                    if (parts.Count > 1)
+                    {
+                        var cityCandidate = parts[parts.Count - 2];
+                        if (parts.Count > 2 && (parsedCountry.Equals("USA", StringComparison.OrdinalIgnoreCase) || 
+                                                parsedCountry.Equals("United States", StringComparison.OrdinalIgnoreCase)))
+                        {
+                            cityCandidate = parts[parts.Count - 3];
+                        }
+                        parsedCity = System.Text.RegularExpressions.Regex.Replace(cityCandidate, @"\b\w*\d\w*\b", "").Trim();
+                        parsedCity = System.Text.RegularExpressions.Regex.Replace(parsedCity, @"\s+", " ");
+                    }
+                }
             }
 
             var newPlace = new Place
@@ -677,9 +740,9 @@ namespace Traces.Controllers
                 Latitude = placeVm.Latitude,
                 Longitude = placeVm.Longitude,
                 FormattedAddress = placeVm.FormattedAddress ?? "",
-                City = placeVm.City ?? "",
+                City = !string.IsNullOrEmpty(placeVm.City) ? placeVm.City : parsedCity,
                 PrimaryCategory = placeVm.PrimaryCategory ?? "Attraction",
-                CountryName = ""
+                CountryName = !string.IsNullOrEmpty(placeVm.CountryName) ? placeVm.CountryName : parsedCountry
             };
 
             _context.Places.Add(newPlace);
@@ -687,10 +750,8 @@ namespace Traces.Controllers
 
             if (!string.IsNullOrEmpty(placeVm.CoverPhoto))
             {
-                var maxPhotoId = await _context.PlacePhotos.Select(p => (int?)p.PlPhIdPk).MaxAsync() ?? 0;
                 var newPhoto = new PlacePhoto
                 {
-                    PlPhIdPk = maxPhotoId + 1,
                     PlacesFk = newPlace.PlIdPk,
                     GooglePhotoReference = placeVm.CoverPhoto
                 };
