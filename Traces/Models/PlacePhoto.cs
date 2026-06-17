@@ -13,7 +13,5 @@ public partial class PlacePhoto
 
     public string GooglePhotoReference { get; set; }
 
-    public string PhotoUrl { get; set; }
-
     public virtual Place PlacesFkNavigation { get; set; }
 }

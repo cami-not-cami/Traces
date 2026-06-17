@@ -14,4 +14,6 @@ public partial class UserInfo
     public string FirstName { get; set; }
 
     public string LastName { get; set; }
+
+    public virtual ICollection<TripMember> TripMembers { get; set; } = new List<TripMember>();
 }

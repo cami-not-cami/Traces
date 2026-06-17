@@ -120,7 +120,6 @@ public partial class TracesDbContext : DbContext
         {
             entity.HasKey(e => e.PlPhIdPk).HasName("PK__PlacePho__B0E720042D9918D2");
 
-            entity.Property(e => e.GooglePhotoReference).HasMaxLength(400);
             entity.Property(e => e.PlacesFk).HasColumnName("PlacesFK");
 
             entity.HasOne(d => d.PlacesFkNavigation).WithMany(p => p.PlacePhotos)
@@ -212,16 +211,16 @@ public partial class TracesDbContext : DbContext
 
         modelBuilder.Entity<TripMember>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToTable("TripMember");
+            entity.HasKey(e => new { e.IdFk, e.TripFk });
 
-            entity.HasOne(d => d.IdFkNavigation).WithMany()
+            entity.ToTable("TripMember");
+
+            entity.HasOne(d => d.IdFkNavigation).WithMany(p => p.TripMembers)
                 .HasForeignKey(d => d.IdFk)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_TripMember_UserInfo");
 
-            entity.HasOne(d => d.TripFkNavigation).WithMany()
+            entity.HasOne(d => d.TripFkNavigation).WithMany(p => p.TripMembers)
                 .HasForeignKey(d => d.TripFk)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_TripMember_Trip");
