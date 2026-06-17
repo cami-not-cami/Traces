@@ -1,9 +1,18 @@
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
 @model ExploreCardViewModel
 
 @* read countries from activities and display top 3, taking the route from other users *@
+@{
+    var coverUrl = Model.CoverPhoto;
+    if (coverUrl != null && !coverUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) && !coverUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+    {
+        coverUrl = $"https://places.googleapis.com/v1/{coverUrl}/media?key={Configuration["ApiKeys:GoogleApiKey"]}&maxWidthPx=600";
+    }
+}
 <div class="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col h-full">
 	<div class="h-48 bg-slate-200 relative overflow-hidden shrink-0">
-		<img src="@Model.CoverPhoto"
+		<img src="@coverUrl"
 			 alt="@Model.CountryName" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
 		<span class="absolute top-3 right-3 bg-white/90 text-xs font-bold px-2 py-1 rounded-md text-slate-800 shadow-sm">@Model.CardLabel</span>
 	</div>

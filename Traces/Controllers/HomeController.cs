@@ -34,7 +34,7 @@ namespace Traces.Controllers
                     // Grab first photo if available, otherwise use a placeholder
                     CoverPhoto = g.SelectMany(x => x.PlaceFkNavigation.PlacePhotos)
                                   .Select(p => p.GooglePhotoReference)
-                                  .FirstOrDefault() ?? "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=600&q=80"
+                                  .FirstOrDefault()
                 })
                 .OrderByDescending(c => c.TripCount)
                 .Take(3)
@@ -44,6 +44,10 @@ namespace Traces.Controllers
             {
                 country.CardLabel = country.TripCount == 1 ? "1 Trip" : $"{country.TripCount} Trips";
                 country.Description = $"Discover the beauty of {country.CountryName} with {country.TripCount} custom {(country.TripCount == 1 ? "trip" : "trips")} created by our community.";
+                if (string.IsNullOrEmpty(country.CoverPhoto))
+                {
+                    country.CoverPhoto = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80";
+                }
             }
 
             return View(topCountries);

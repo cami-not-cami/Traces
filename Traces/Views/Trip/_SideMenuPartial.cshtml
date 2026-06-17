@@ -22,7 +22,7 @@
                 <ul class="mt-2 space-y-1 max-h-36 overflow-y-auto">
                     @foreach (var t in userTrips)
                     {
-                        <li>
+                        <li id="sidebar-row">
                             <a href="@Url.Action("Index", "Trip", new { tripId = t.TrIdPk })" 
                                class="flex items-center py-1.5 px-3 text-xs font-semibold rounded-xl transition-all @(Model.TripId == t.TrIdPk ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:text-indigo-600 hover:bg-slate-200/55")">
                                 <span class="mr-2">
@@ -58,6 +58,17 @@
 </aside>
 
 <script>
+    function toggleSidebarSection(button) {
+        const list = button.nextElementSibling;
+        const svg = button.querySelector('svg');
+        if (list) {
+            list.classList.toggle('hidden');
+        }
+        if (svg) {
+            svg.classList.toggle('-rotate-90');
+        }
+    }
+
     function toggleSidebar() {
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('sidebar-overlay');
@@ -188,6 +199,7 @@
 
             const toggleBtn = sidebar.querySelector('.sidebar-toggle-btn');
             if (toggleBtn) {
+
                 toggleBtn.classList.remove('w-12', 'h-12', 'justify-center', 'mx-auto');
                 toggleBtn.classList.add('px-3.5', 'mx-3', 'w-[calc(100%-24px)]');
             }
