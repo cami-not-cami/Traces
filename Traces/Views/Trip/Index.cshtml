@@ -530,6 +530,20 @@
                 lng = (double)p.Longitude.Value,
                 category = p.PrimaryCategory
             })
+        )),
+        routes: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+            (Model.Days ?? new List<TripDayViewModel>())
+            .SelectMany(d => d.Activities ?? new List<TripActivityViewModel>())
+            .Where(a => a.RouteToNext != null && !string.IsNullOrEmpty(a.RouteToNext.PolylineEncoded))
+            .Select(a => new
+            {
+                fromActivityId = a.TripActivityId,
+                toActivityId = a.RouteToNext.ToActivityFk,
+                polyline = a.RouteToNext.PolylineEncoded,
+                travelMode = a.RouteToNext.TravelMode,
+                distance = a.RouteToNext.DistanceMeters,
+                duration = a.RouteToNext.DurationSeconds
+            })
         ))
     };
     </script>
@@ -537,6 +551,6 @@
 @section Scripts {
     <script src="~/js/tripScript.js" asp-append-version="true"></script>
     <script async
-            src="https://maps.googleapis.com/maps/api/js?key=@Configuration["ApiKeys:GoogleApiKey"]&libraries=places&loading=async&callback=initMap">
+            src="https://maps.googleapis.com/maps/api/js?key=@Configuration["ApiKeys:GoogleApiKey"]&libraries=places,geometry&loading=async&callback=initMap">
     </script>
 }

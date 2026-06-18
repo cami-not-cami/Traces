@@ -458,6 +458,51 @@ async function initMap() {
         map.fitBounds(bounds);
     }
 
+    // Draw route polylines on the map if present
+    if (window.TripConfig.routes && window.TripConfig.routes.length > 0) {
+        window.TripConfig.routes.forEach(route => {
+            if (route.polyline) {
+                const path = google.maps.geometry.encoding.decodePath(route.polyline);
+                
+                let strokeColor = "#6366F1"; // Default indigo-500 for DRIVE
+                let icons = null;
+
+                if (route.travelMode === "WALK") {
+                    strokeColor = "#10B981"; // Emerald-500 for WALK
+                    // Render walking routes as dashed lines
+                    icons = [{
+                        icon: {
+                            path: 'M 0,-1 0,1',
+                            strokeOpacity: 1,
+                            scale: 2
+                        },
+                        offset: '0',
+                        repeat: '10px'
+                    }];
+                } else if (route.travelMode === "BICYCLE") {
+                    strokeColor = "#3B82F6"; // Blue-500 for BICYCLE
+                } else if (route.travelMode === "TRANSIT") {
+                    strokeColor = "#F59E0B"; // Amber-500 for TRANSIT
+                }
+
+                const polylineOptions = {
+                    path: path,
+                    geodesic: true,
+                    strokeColor: strokeColor,
+                    strokeOpacity: route.travelMode === "WALK" ? 0 : 0.8,
+                    strokeWeight: 4,
+                    map: map
+                };
+
+                if (icons) {
+                    polylineOptions.icons = icons;
+                }
+
+                new google.maps.Polyline(polylineOptions);
+            }
+        });
+    }
+
     // Initialize custom autocomplete for all inline day forms using the backend Places API (New)
     document.querySelectorAll('.day-autocomplete').forEach(input => {
         const form = input.closest('form');
@@ -694,6 +739,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 });
                             }
                         }
+                        location.reload();
                     } else {
                         console.error('Failed to reorder activities');
                     }

@@ -73,6 +73,5 @@ namespace Traces.Models
         public string? CoverPhoto { get; set; }
         public string? CountryName { get; set; }
     }
-
 }
 

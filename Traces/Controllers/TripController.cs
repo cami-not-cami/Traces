@@ -11,11 +11,15 @@ namespace Traces.Controllers
     {
         private readonly TracesDbContext _context;
         private readonly GooglePlacesService _googlePlacesService;
+        private readonly GoogleMapsServices _googleMapsServices;
+        private readonly ILogger<TripController> _logger;
 
-        public TripController(TracesDbContext context, GooglePlacesService googlePlacesService)
+        public TripController(TracesDbContext context, GooglePlacesService googlePlacesService, GoogleMapsServices googleMapsServices, ILogger<TripController> logger)
         {
             _context = context;
             _googlePlacesService = googlePlacesService;
+            _googleMapsServices = googleMapsServices;
+            _logger = logger;
         }
         // GET: TripController
         public async Task<ActionResult> Index(int? tripId, string? placeId, string? startDate, string? endDate)
@@ -125,6 +129,16 @@ namespace Traces.Controllers
 
             if (tripId.HasValue && tripId.Value > 0)
             {
+                var dayIds = await _context.TripDays
+                    .Where(d => d.TripFk == tripId.Value && d.DayNumber > 0)
+                    .Select(d => d.TrDaIdPk)
+                    .ToListAsync();
+
+                foreach (var dayId in dayIds)
+                {
+                    await UpdateRoutesForDayAsync(dayId);
+                }
+
                 var savedVm = await GetTripViewModelAsync(tripId.Value);
                 if (savedVm != null)
                 {
@@ -221,8 +235,10 @@ namespace Traces.Controllers
                     Longitude = placeVm.Longitude,
                     PlacesToVisit = new List<PlaceViewModel> { placeVm },
                 };
+
                 return View(vm);
             }
+
             return View(vm);
         }
 
@@ -288,7 +304,6 @@ namespace Traces.Controllers
                 }
                 await _context.SaveChangesAsync();
             }
-
             await LinkUserToTripAsync(trip.TrIdPk);
 
             return RedirectToAction("Index", new { tripId = trip.TrIdPk });
@@ -306,6 +321,9 @@ namespace Traces.Controllers
                 .Include(t => t.TripDays)
                     .ThenInclude(d => d.TripActivities)
                         .ThenInclude(a => a.Notes)
+                .Include(t => t.TripDays)
+                    .ThenInclude(d => d.TripActivities)
+                        .ThenInclude(a => a.RouteToNextFromActivityFkNavigations)
                 .FirstOrDefaultAsync(t => t.TrIdPk == tripId);
 
             if (trip == null) return null;
@@ -352,8 +370,9 @@ namespace Traces.Controllers
                                 City = a.PlaceFkNavigation.City,
                                 PrimaryCategory = a.PlaceFkNavigation.PrimaryCategory,
                                 CoverPhoto = a.PlaceFkNavigation.PlacePhotos.FirstOrDefault()?.GooglePhotoReference
-                             //   CountryName = a.PlaceFkNavigation.CountryName
+                             
                             },
+                            RouteToNext = a.RouteToNextFromActivityFkNavigations.FirstOrDefault(),
                             ChecklistItems = a.Checklists.ToList()
                         })
                         .ToList()
@@ -468,6 +487,7 @@ namespace Traces.Controllers
                     if (activitiesToDelete.Any())
                     {
                         var activityIds = activitiesToDelete.Select(a => a.TrAcIdPk).ToList();
+                        var dayIdsToUpdate = activitiesToDelete.Select(a => a.TripDayFk).Distinct().ToList();
 
                         var checklists = await _context.Checklists.Where(c => c.TripActivityFk.HasValue && activityIds.Contains(c.TripActivityFk.Value)).ToListAsync();
                         _context.Checklists.RemoveRange(checklists);
@@ -479,6 +499,12 @@ namespace Traces.Controllers
                         _context.RouteToNexts.RemoveRange(routes);
 
                         _context.TripActivities.RemoveRange(activitiesToDelete);
+                        await _context.SaveChangesAsync();
+
+                        foreach (var dayId in dayIdsToUpdate)
+                        {
+                            await UpdateRoutesForDayAsync(dayId);
+                        }
                     }
                 }
 
@@ -647,9 +673,34 @@ namespace Traces.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            await UpdateRoutesForDayAsync(targetDay.TrDaIdPk);
+
             return RedirectToAction("Index", new { tripId = tripId });
         }
 
+        [HttpPost]
+        public async Task<IActionResult> SetBudget(int tripId, double budget)
+        {
+            if(tripId != null && User.Identity.IsAuthenticated)
+            {
+                var currentTrip = await _context.Trips.FirstOrDefaultAsync(x => x.TrIdPk == tripId);
+                try
+                {
+                    currentTrip.Budget = budget;
+                    _context.Trips.Update(currentTrip);
+                    await _context.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    return StatusCode(500, $"Error setting budget: {ex.Message}");
+                }
+                return StatusCode(200, "Budget updated successfully");
+            }
+            else
+            {
+                return StatusCode(401, "Must be logged in to set a budget for the trip.");
+            }
+        }
         private async Task<int> GetOrCreatePlaceAsync(PlaceViewModel placeVm)
         {
             var existing = await _context.Places.Include(p => p.PlacePhotos).FirstOrDefaultAsync(p => p.GooglePlaceId == placeVm.GooglePlaceId);
@@ -761,29 +812,95 @@ namespace Traces.Controllers
 
             return newPlace.PlIdPk;
         }
-
-        [HttpPost]
-        public async Task<IActionResult> SetBudget(int tripId, double budget)
+        private async Task UpdateRoutesForDayAsync(int tripDayId)
         {
-            if(tripId != null && User.Identity.IsAuthenticated)
+            var activities = await _context.TripActivities
+                .Include(a => a.RouteToNextFromActivityFkNavigations)
+                .Include(a => a.PlaceFkNavigation)
+                .Where(a => a.TripDayFk == tripDayId)
+                .OrderBy(a => a.OrderIndex)
+                .ToListAsync();
+
+            if(activities.Count < 2)
             {
-                var currentTrip = await _context.Trips.FirstOrDefaultAsync(x => x.TrIdPk == tripId);
-                try
+                //get all ids
+                var activityIds = activities.Select(a => a.TrAcIdPk).ToList();
+                //delete old routes if under 2 activities
+                var routesToDelete = await _context.RouteToNexts
+                    .Where(r => activityIds.Contains(r.FromActivityFk) || activityIds.Contains(r.ToActivityFk))
+                    .ToListAsync();
+                if (routesToDelete.Any())
                 {
-                    currentTrip.Budget = budget;
-                    _context.Trips.Update(currentTrip);
+                    _context.RouteToNexts.RemoveRange(routesToDelete);
                     await _context.SaveChangesAsync();
                 }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, $"Error setting budget: {ex.Message}");
-                }
-                return StatusCode(200, "Budget updated successfully");
+                return;
             }
-            else
+            //use a hashset for tracking the routes, it doesnt allow duplicates and keeps the order of insertion
+            // need to check this because the orderindex can change
+            var currentPairs = new HashSet<(int FromId, int ToId)>();
+            for(int i = 0; i < activities.Count - 1; i++)
             {
-                return StatusCode(401, "Must be logged in to set a budget for the trip.");
+                var fromActivity = activities[i];
+                var toActivity = activities[i + 1];
+                currentPairs.Add((fromActivity.TrAcIdPk, toActivity.TrAcIdPk));
             }
+
+            var activityDayIds = activities.Select(a => a.TrAcIdPk).ToList();
+            var existingRoutes = await _context.RouteToNexts
+                .Where(r => activityDayIds.Contains(r.FromActivityFk) || activityDayIds.Contains(r.ToActivityFk))
+                .ToListAsync();
+            foreach(var route in existingRoutes)
+            {
+                if (!currentPairs.Contains((route.FromActivityFk, route.ToActivityFk)))
+                {
+                    _context.RouteToNexts.Remove(route);
+                }
+            }
+            for (int i = 0; i < activities.Count - 1; i++)
+            {
+                var fromActivity = activities[i];
+                var toActivity = activities[i + 1];
+
+                var routeFromDb = existingRoutes.Any(r => r.FromActivityFk == fromActivity.TrAcIdPk 
+                                    && r.ToActivityFk == toActivity.TrAcIdPk);
+                if(!routeFromDb)
+                {
+                    var originalPlaceId = fromActivity.PlaceFkNavigation?.GooglePlaceId;
+                    var destinationPlaceId = toActivity.PlaceFkNavigation?.GooglePlaceId;
+                    
+                    if(!string.IsNullOrEmpty(originalPlaceId) && !string.IsNullOrEmpty(destinationPlaceId))
+                    {
+                        try
+                        {
+
+                            // Proceed with route creation
+                            var routeInfo = await _googleMapsServices.GetDirectionsBetweenRoutes(originalPlaceId, destinationPlaceId, "DRIVE");
+                            if (routeInfo != null)
+                            {
+                                var route = new RouteToNext
+                                {
+                                    FromActivityFk = fromActivity.TrAcIdPk,
+                                    ToActivityFk = toActivity.TrAcIdPk,
+                                    TravelMode = "DRIVE",
+                                    PolylineEncoded = routeInfo.PolylineEncoded,
+                                    DurationSeconds = routeInfo.DurationSeconds,
+                                    DistanceMeters = routeInfo.DistanceMeters
+                                };
+                                _context.RouteToNexts.Add(route);
+                                await _context.SaveChangesAsync();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, $"Failed to calculate route between activities {fromActivity.TrAcIdPk} and {toActivity.TrAcIdPk}");
+                        }
+                    }
+
+                }
+
+            }
+            await _context.SaveChangesAsync();
         }
 
         private async Task LinkUserToTripAsync(int tripId)
@@ -845,6 +962,8 @@ namespace Traces.Controllers
                 return BadRequest("Invalid request data.");
             }
 
+            var affectedDayIds = new HashSet<int> { request.TripDayId };
+
             // Update the order index and day for each activity
             for (int i = 0; i < request.ActivityIds.Count; i++)
             {
@@ -855,12 +974,19 @@ namespace Traces.Controllers
                     activity.OrderIndex = i;
                     if (activity.TripDayFk != request.TripDayId)
                     {
+                        affectedDayIds.Add(activity.TripDayFk);
                         activity.TripDayFk = request.TripDayId;
                     }
                 }
             }
 
             await _context.SaveChangesAsync();
+
+            foreach (var dayId in affectedDayIds)
+            {
+                await UpdateRoutesForDayAsync(dayId);
+            }
+
             return Json(new { success = true });
         }
 
