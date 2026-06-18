@@ -119,10 +119,5 @@ namespace Traces.Services
 
             return new JsonResult(new { success = true, data = "Nearby places would be here" });
         }
-        public async Task<IActionResult> GetPlacePhoto(string photoReference)
-        {
-            //get photos from google api, dont know how i will handle the saving 
-            return new JsonResult(new { success = true, data = "Place photo would be here" });
-        } 
     }
 }
