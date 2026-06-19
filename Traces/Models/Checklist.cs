@@ -9,11 +9,11 @@ public partial class Checklist
 {
     public int ChIdPk { get; set; }
 
-    public int? TripActivityFk { get; set; }
+    public int? TripFk { get; set; }
 
     public string Content { get; set; }
 
     public bool? IsCompleted { get; set; }
 
-    public virtual TripActivity TripActivityFkNavigation { get; set; }
+    public virtual Trip TripFkNavigation { get; set; }
 }

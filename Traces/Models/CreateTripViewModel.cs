@@ -19,6 +19,7 @@ namespace Traces.Models
         public List<TripDayViewModel> Days { get; set; } = new();
 
         public List<Note> Notes { get; set; } = new();
+        public List<Checklist> Checklists { get; set; } = new();
         public List<PlaceViewModel> PlacesToVisit { get; set; } = new();
     }
 
@@ -57,8 +58,6 @@ namespace Traces.Models
 
         public PlaceViewModel Place { get; set; }
         public RouteToNext RouteToNext { get; set; }
-
-        public List<Checklist> ChecklistItems { get; set; } = new();
     }
 
     public class PlaceViewModel

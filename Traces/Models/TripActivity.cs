@@ -21,10 +21,6 @@ public partial class TripActivity
 
     public string Status { get; set; }
 
-    public virtual ICollection<Checklist> Checklists { get; set; } = new List<Checklist>();
-
-    public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
-
     public virtual Place PlaceFkNavigation { get; set; }
 
     public virtual ICollection<RouteToNext> RouteToNextFromActivityFkNavigations { get; set; } = new List<RouteToNext>();

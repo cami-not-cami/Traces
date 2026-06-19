@@ -19,6 +19,10 @@ public partial class Trip
 
     public double? Budget { get; set; }
 
+    public virtual ICollection<Checklist> Checklists { get; set; } = new List<Checklist>();
+
+    public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+
     public virtual ICollection<TripDay> TripDays { get; set; } = new List<TripDay>();
 
     public virtual ICollection<TripMember> TripMembers { get; set; } = new List<TripMember>();

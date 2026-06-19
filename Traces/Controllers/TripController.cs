@@ -391,16 +391,12 @@ namespace Traces.Controllers
         private async Task<CreateTripViewModel?> GetTripViewModelAsync(int tripId)
         {
             var trip = await _context.Trips
+                .Include(t => t.Checklists)
+                .Include(t => t.Notes)
                 .Include(t => t.TripDays)
                     .ThenInclude(d => d.TripActivities)
                         .ThenInclude(a => a.PlaceFkNavigation)
                             .ThenInclude(p => p.PlacePhotos)
-                .Include(t => t.TripDays)
-                    .ThenInclude(d => d.TripActivities)
-                        .ThenInclude(a => a.Checklists)
-                .Include(t => t.TripDays)
-                    .ThenInclude(d => d.TripActivities)
-                        .ThenInclude(a => a.Notes)
                 .Include(t => t.TripDays)
                     .ThenInclude(d => d.TripActivities)
                         .ThenInclude(a => a.RouteToNextFromActivityFkNavigations)
@@ -450,19 +446,14 @@ namespace Traces.Controllers
                                 City = a.PlaceFkNavigation.City,
                                 PrimaryCategory = a.PlaceFkNavigation.PrimaryCategory,
                                 CoverPhoto = a.PlaceFkNavigation.PlacePhotos.FirstOrDefault()?.GooglePhotoReference
-                             
                             },
-                            RouteToNext = a.RouteToNextFromActivityFkNavigations.FirstOrDefault(),
-                            ChecklistItems = a.Checklists.ToList()
+                            RouteToNext = a.RouteToNextFromActivityFkNavigations.FirstOrDefault()
                         })
                         .ToList()
                 })
                 .ToList();
 
-            var allNotes = trip.TripDays
-                .SelectMany(d => d.TripActivities)
-                .SelectMany(a => a.Notes)
-                .ToList();
+            var allNotes = trip.Notes.ToList();
 
             var placesToVisit = dayViewModels
                 .SelectMany(d => d.Activities)
@@ -488,6 +479,7 @@ namespace Traces.Controllers
                 Members = members,
                 Days = dayViewModels,
                 Notes = allNotes,
+                Checklists = trip.Checklists.ToList(),
                 PlacesToVisit = placesToVisit
             };
         }
@@ -568,12 +560,6 @@ namespace Traces.Controllers
                     {
                         var activityIds = activitiesToDelete.Select(a => a.TrAcIdPk).ToList();
                         var dayIdsToUpdate = activitiesToDelete.Select(a => a.TripDayFk).Distinct().ToList();
-
-                        var checklists = await _context.Checklists.Where(c => c.TripActivityFk.HasValue && activityIds.Contains(c.TripActivityFk.Value)).ToListAsync();
-                        _context.Checklists.RemoveRange(checklists);
-
-                        var notes = await _context.Notes.Where(n => n.TripActivityFk.HasValue && activityIds.Contains(n.TripActivityFk.Value)).ToListAsync();
-                        _context.Notes.RemoveRange(notes);
 
                         var routes = await _context.RouteToNexts.Where(r => activityIds.Contains(r.FromActivityFk) || activityIds.Contains(r.ToActivityFk)).ToListAsync();
                         _context.RouteToNexts.RemoveRange(routes);
@@ -746,7 +732,7 @@ namespace Traces.Controllers
                 var note = new Note
                 {
                     NoIdPk = (await _context.Notes.Select(n => (int?)n.NoIdPk).MaxAsync() ?? 0) + 1,
-                    TripActivityFk = activity.TrAcIdPk,
+                    TripFk = tripId,
                     Content = notes
                 };
                 _context.Notes.Add(note);

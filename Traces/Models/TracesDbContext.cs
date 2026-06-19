@@ -50,10 +50,10 @@ public partial class TracesDbContext : DbContext
             entity.ToTable("Checklist");
 
             entity.Property(e => e.Content).HasMaxLength(100);
-            entity.Property(e => e.TripActivityFk).HasColumnName("TripActivityFK");
+            entity.Property(e => e.TripFk).HasColumnName("TripFK");
 
-            entity.HasOne(d => d.TripActivityFkNavigation).WithMany(p => p.Checklists)
-                .HasForeignKey(d => d.TripActivityFk)
+            entity.HasOne(d => d.TripFkNavigation).WithMany(p => p.Checklists)
+                .HasForeignKey(d => d.TripFk)
                 .HasConstraintName("FK_Checklist_TripActivities");
         });
 
@@ -62,10 +62,10 @@ public partial class TracesDbContext : DbContext
             entity.HasKey(e => e.NoIdPk).HasName("PK__Notes__14F9C02A6FC3F9F8");
 
             entity.Property(e => e.Content).HasMaxLength(500);
-            entity.Property(e => e.TripActivityFk).HasColumnName("TripActivityFK");
+            entity.Property(e => e.TripFk).HasColumnName("TripFK");
 
-            entity.HasOne(d => d.TripActivityFkNavigation).WithMany(p => p.Notes)
-                .HasForeignKey(d => d.TripActivityFk)
+            entity.HasOne(d => d.TripFkNavigation).WithMany(p => p.Notes)
+                .HasForeignKey(d => d.TripFk)
                 .HasConstraintName("FK_Notes_TripActivities");
         });
 
