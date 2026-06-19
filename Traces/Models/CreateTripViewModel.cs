@@ -13,6 +13,7 @@ namespace Traces.Models
         public double? Budget { get; set; }
         public decimal? Latitude { get; set; }
         public decimal? Longitude { get; set; }
+        public bool ViewOnly { get; set; }
 
         public List<TripMemberInfo> Members { get; set; } = new();
         public List<TripDayViewModel> Days { get; set; } = new();

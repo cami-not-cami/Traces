@@ -22,7 +22,7 @@ namespace Traces.Controllers
             _logger = logger;
         }
         // GET: TripController
-        public async Task<ActionResult> Index(int? tripId, string? placeId, string? startDate, string? endDate)
+        public async Task<ActionResult> Index(int? tripId, string? placeId, string? startDate, string? endDate, string? exploreCountry = null)
         {
             // 1. Session to Database Migration (if authenticated)
             if (User.Identity != null && User.Identity.IsAuthenticated)
@@ -126,6 +126,86 @@ namespace Traces.Controllers
                 }
             }
             ViewBag.UserTrips = userTrips;
+
+            if (!string.IsNullOrEmpty(exploreCountry))
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                          ?? User.FindFirst("sub")?.Value
+                          ?? User.FindFirst(ClaimTypes.Name)?.Value;
+                int? currentUserIdPk = null;
+                if (userId != null)
+                {
+                    var userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.UserFk == userId);
+                    if (userInfo != null)
+                    {
+                        currentUserIdPk = userInfo.IdPk;
+                    }
+                }
+
+                var query = _context.TripActivities
+                    .Include(a => a.PlaceFkNavigation)
+                        .ThenInclude(p => p.PlacePhotos)
+                    .Include(a => a.TripDayFkNavigation)
+                    .Where(a => a.PlaceFkNavigation.CountryName == exploreCountry);
+
+                if (currentUserIdPk.HasValue)
+                {
+                    query = query.Where(a => !_context.TripMembers.Any(tm => tm.TripFk == a.TripDayFkNavigation.TripFk && tm.IdFk == currentUserIdPk.Value));
+                }
+
+                var activitiesFromCountry = await query.ToListAsync();
+
+                var places = activitiesFromCountry
+                    .Select(a => a.PlaceFkNavigation)
+                    .Where(p => p != null)
+                    .GroupBy(p => p.GooglePlaceId)
+                    .Select(g => g.First())
+                    .ToList();
+
+                if (places.Count == 0)
+                {
+                    var countryPlace = await _context.Places.Include(p => p.PlacePhotos).FirstOrDefaultAsync(p => p.CountryName == exploreCountry);
+                    if (countryPlace != null)
+                    {
+                        places.Add(countryPlace);
+                    }
+                }
+
+                var placeVms = places.Select(p => new PlaceViewModel
+                {
+                    PlaceId = p.PlIdPk,
+                    GooglePlaceId = p.GooglePlaceId,
+                    Name = p.Name,
+                    Latitude = p.Latitude,
+                    Longitude = p.Longitude,
+                    FormattedAddress = p.FormattedAddress,
+                    PrimaryCategory = p.PrimaryCategory,
+                    City = p.City,
+                    CoverPhoto = p.PlacePhotos.FirstOrDefault()?.GooglePhotoReference
+                }).ToList();
+
+                var firstPlace = placeVms.FirstOrDefault();
+                if (firstPlace != null)
+                {
+                    ViewBag.CoverPhoto = firstPlace.CoverPhoto;
+                }
+
+                var exploreVm = new CreateTripViewModel
+                {
+                    TripId = 0,
+                    Title = $"Explore {exploreCountry}",
+                    Description = $"Trip generated with ideas from other users' activities in {exploreCountry}.",
+                    StartDate = null,
+                    EndDate = null,
+                    Budget = 0.0,
+                    Latitude = firstPlace?.Latitude,
+                    Longitude = firstPlace?.Longitude,
+                    PlacesToVisit = placeVms,
+                    ViewOnly = true
+                };
+
+                return View(exploreVm);
+            }
 
             if (tripId.HasValue && tripId.Value > 0)
             {

@@ -73,7 +73,7 @@
             <div class="flex items-center space-x-1.5 sm:space-x-3">
 
                 
-                @if (Model.TripId == 0)
+                @if (Model.TripId == 0 && !Model.ViewOnly)
                 {
                     <form asp-controller="Trip" asp-action="Save" method="post" class="inline m-0">
                         <input type="hidden" asp-for="TripId" />
@@ -156,11 +156,14 @@
                         <div class="mb-4 sm:mb-0 pr-8 relative group flex-1">
                             <div class="flex items-center gap-3">
                                 <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">@Model.Title</h1>
-                                <button onclick="enterBadgeEditMode()" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-105 rounded-lg transition-all" title="Edit Trip Details">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                    </svg>
-                                </button>
+                                @if (!Model.ViewOnly)
+                                {
+                                    <button onclick="enterBadgeEditMode()" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-105 rounded-lg transition-all" title="Edit Trip Details">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                        </svg>
+                                    </button>
+                                }
                             </div>
                             @if (!string.IsNullOrEmpty(Model.Description))
                             {
@@ -184,12 +187,14 @@
                                     </div>
                                 }
                             </div>
-                            <div class="w-9 h-9 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-xs text-slate-500 font-bold shadow-md hover:bg-slate-100 cursor-pointer transition-colors" title="Invite Friends">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                    <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
-                                </svg>
-
-                            </div>
+                            @if (!Model.ViewOnly)
+                            {
+                                <div class="w-9 h-9 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-xs text-slate-500 font-bold shadow-md hover:bg-slate-100 cursor-pointer transition-colors" title="Invite Friends">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                        <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
+                                    </svg>
+                                </div>
+                            }
                         </div>
                     </div>
 
@@ -274,15 +279,18 @@
                         <p class="text-xs text-slate-400 mb-4 italic">No unscheduled places added yet.</p>
                     }
 
-                    @await Html.PartialAsync("_InlineAddPlacePartial", new
+                    @if (!Model.ViewOnly)
                     {
-                        DayNumber = 0,
-                        DayLabel = "Unscheduled",
-                        TripId = Model.TripId,
-                        TripTitle = Model.Title,
-                        TripStartDate = Model.StartDate?.ToString("yyyy-MM-dd"),
-                        TripEndDate = Model.EndDate?.ToString("yyyy-MM-dd")
-                    })
+                        @await Html.PartialAsync("_InlineAddPlacePartial", new
+                        {
+                            DayNumber = 0,
+                            DayLabel = "Unscheduled",
+                            TripId = Model.TripId,
+                            TripTitle = Model.Title,
+                            TripStartDate = Model.StartDate?.ToString("yyyy-MM-dd"),
+                            TripEndDate = Model.EndDate?.ToString("yyyy-MM-dd")
+                        })
+                    }
                 </div>
 
                 <!-- 2. DYNAMIC DAILY ITINERARY -->
@@ -320,13 +328,16 @@
                                     <div class="activities-container space-y-6 mb-4" data-day-id="@day.TripDayId">
                                         @foreach (var activity in day.Activities)
                                         {
-                                            <div class="activity-card bg-white border border-slate-150 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start cursor-grab active:cursor-grabbing" draggable="true" data-activity-id="@activity.TripActivityId">
+                                            <div class="activity-card bg-white border border-slate-150 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start @(Model.ViewOnly ? "" : "cursor-grab active:cursor-grabbing")" draggable="@(Model.ViewOnly ? "false" : "true")" data-activity-id="@activity.TripActivityId">
                                                 <!-- Drag handle -->
-                                                <div class="mr-3 mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
-                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
-                                                    </svg>
-                                                </div>
+                                                @if (!Model.ViewOnly)
+                                                {
+                                                    <div class="mr-3 mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
+                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
+                                                        </svg>
+                                                    </div>
+                                                }
 
                                                 <div class="space-y-2 flex-1 pr-4">
                                                     <div class="flex items-center space-x-2">
@@ -377,16 +388,19 @@
                                         }
                                     </div>
 
-                                    <!-- Inline Add Place Form for this day -->
-                                    @await Html.PartialAsync("_InlineAddPlacePartial", new
+                                    @if (!Model.ViewOnly)
                                     {
-                                        DayNumber = day.DayNumber,
-                                        DayLabel = day.DayLabel,
-                                        TripId = Model.TripId,
-                                        TripTitle = Model.Title,
-                                        TripStartDate = Model.StartDate?.ToString("yyyy-MM-dd"),
-                                        TripEndDate = Model.EndDate?.ToString("yyyy-MM-dd")
-                                    })
+                                        <!-- Inline Add Place Form for this day -->
+                                        @await Html.PartialAsync("_InlineAddPlacePartial", new
+                                        {
+                                            DayNumber = day.DayNumber,
+                                            DayLabel = day.DayLabel,
+                                            TripId = Model.TripId,
+                                            TripTitle = Model.Title,
+                                            TripStartDate = Model.StartDate?.ToString("yyyy-MM-dd"),
+                                            TripEndDate = Model.EndDate?.ToString("yyyy-MM-dd")
+                                        })
+                                    }
                                 </div>
                             }
                         </div>
@@ -412,14 +426,18 @@
                                    id="budget"
                                    value="@(Model.Budget ?? 0)"
                                    class="w-full bg-transparent font-black text-slate-900 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                   placeholder="0">
+                                   placeholder="0"
+                                   @(Model.ViewOnly ? "disabled" : "")>
                             <span class="ml-1 text-slate-400">€</span>
                         </div>
 
                         <!-- Save Action -->
-                        <button type="button" onclick="saveBudget(@Model.TripId)"  class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center transition-colors text-left bg-transparent border-none p-0 cursor-pointer">
-                            Save budget <span class="ml-1">→</span>
-                        </button>
+                        @if (!Model.ViewOnly)
+                        {
+                            <button type="button" onclick="saveBudget(@Model.TripId)"  class="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center transition-colors text-left bg-transparent border-none p-0 cursor-pointer">
+                                Save budget <span class="ml-1">→</span>
+                            </button>
+                        }
                     </div>
                 </div>
             </div>

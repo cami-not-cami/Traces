@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Diagnostics;
+using System.Security.Claims;
+using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Traces.Models;
 using Traces.Services;
 
@@ -107,6 +110,16 @@ namespace Traces.Controllers
                 startDate = startDate?.ToString("yyyy-MM-dd"),
                 endDate = endDate?.ToString("yyyy-MM-dd")
             });
+        }
+        [HttpPost]
+        public IActionResult ExploreCardNavigationToTripPage(string countryName)
+        {
+            if (string.IsNullOrEmpty(countryName))
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            return RedirectToAction("Index", "Trip", new { exploreCountry = countryName });
         }
     }
 }
