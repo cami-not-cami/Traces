@@ -15,5 +15,7 @@ public partial class Checklist
 
     public bool? IsCompleted { get; set; }
 
+    public int OrderIndex { get; set; }
+
     public virtual Trip TripFkNavigation { get; set; }
 }

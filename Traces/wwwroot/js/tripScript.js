@@ -463,7 +463,7 @@ async function initMap() {
         window.TripConfig.routes.forEach(route => {
             if (route.polyline) {
                 const path = google.maps.geometry.encoding.decodePath(route.polyline);
-                
+
                 let strokeColor = "#6366F1"; // Default indigo-500 for DRIVE
                 let icons = null;
 

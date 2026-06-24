@@ -13,5 +13,7 @@ public partial class Note
 
     public string Content { get; set; }
 
+    public int? OrderIndex { get; set; }
+
     public virtual Trip TripFkNavigation { get; set; }
 }

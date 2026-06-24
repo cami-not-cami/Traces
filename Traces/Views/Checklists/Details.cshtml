@@ -1,0 +1,33 @@
+@model Traces.Models.Checklist
+
+@{
+    ViewData["Title"] = "Checklist Details";
+}
+
+<h1>Checklist Details</h1>
+
+<div>
+    <h4>Checklist</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">Id</dt>
+        <dd class="col-sm-10">@Model.ChIdPk</dd>
+
+        <dt class="col-sm-2">Trip</dt>
+        <dd class="col-sm-10">@Model.TripFkNavigation?.Title</dd>
+
+        <dt class="col-sm-2">Content</dt>
+        <dd class="col-sm-10">@Model.Content</dd>
+
+        <dt class="col-sm-2">Completed</dt>
+        <dd class="col-sm-10">@(Model.IsCompleted == true ? "Yes" : "No")</dd>
+
+        <dt class="col-sm-2">Order</dt>
+        <dd class="col-sm-10">@Model.OrderIndex</dd>
+    </dl>
+</div>
+
+<div>
+    <a asp-action="Edit" asp-route-id="@Model.ChIdPk" class="btn btn-primary">Edit</a>
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</div>

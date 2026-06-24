@@ -1,0 +1,41 @@
+@model IEnumerable<Traces.Models.Checklist>
+
+@{
+    ViewData["Title"] = "Checklists";
+}
+
+<h1>Checklists</h1>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Create New</a>
+</p>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Trip</th>
+            <th>Content</th>
+            <th>Completed</th>
+            <th>Order</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model)
+    {
+        <tr>
+            <td>@item.ChIdPk</td>
+            <td>@item.TripFkNavigation?.Title</td>
+            <td>@item.Content</td>
+            <td>@(item.IsCompleted == true ? "Yes" : "No")</td>
+            <td>@item.OrderIndex</td>
+            <td>
+                <a asp-action="Details" asp-route-id="@item.ChIdPk">Details</a> |
+                <a asp-action="Edit" asp-route-id="@item.ChIdPk">Edit</a> |
+                <a asp-action="Delete" asp-route-id="@item.ChIdPk">Delete</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
