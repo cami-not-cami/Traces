@@ -15,5 +15,7 @@ public partial class Note
 
     public int? OrderIndex { get; set; }
 
+    public int? TripDayFk { get; set; }
+
     public virtual Trip TripFkNavigation { get; set; }
 }

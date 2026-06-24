@@ -15,6 +15,8 @@ public partial class TracesDbContext : DbContext
 
     public virtual DbSet<Checklist> Checklists { get; set; }
 
+    public virtual DbSet<ChecklistItem> ChecklistItems { get; set; }
+
     public virtual DbSet<Note> Notes { get; set; }
 
     public virtual DbSet<Place> Places { get; set; }
@@ -45,16 +47,39 @@ public partial class TracesDbContext : DbContext
     {
         modelBuilder.Entity<Checklist>(entity =>
         {
-            entity.HasKey(e => e.ChIdPk).HasName("PK__Checklis__4E2CD300142B8236");
+            entity.HasKey(e => e.ChIdPk).HasName("PK__Checklis__4E2CD3008CDFBA7A");
 
             entity.ToTable("Checklist");
 
-            entity.Property(e => e.Content).HasMaxLength(100);
+            entity.Property(e => e.Title)
+                .IsRequired()
+                .HasMaxLength(100);
             entity.Property(e => e.TripFk).HasColumnName("TripFK");
+
+            entity.HasOne(d => d.TripDayFkNavigation).WithMany(p => p.Checklists)
+                .HasForeignKey(d => d.TripDayFk)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_Checklist_TripDay");
 
             entity.HasOne(d => d.TripFkNavigation).WithMany(p => p.Checklists)
                 .HasForeignKey(d => d.TripFk)
-                .HasConstraintName("FK_Checklist_TripActivities");
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_Checklist_Trip");
+        });
+
+        modelBuilder.Entity<ChecklistItem>(entity =>
+        {
+            entity.HasKey(e => e.ChItIdPk).HasName("PK__Checklis__9637F8922B9DCA2E");
+
+            entity.ToTable("ChecklistItem");
+
+            entity.Property(e => e.Content)
+                .IsRequired()
+                .HasMaxLength(150);
+
+            entity.HasOne(d => d.ChecklistFkNavigation).WithMany(p => p.ChecklistItems)
+                .HasForeignKey(d => d.ChecklistFk)
+                .HasConstraintName("FK_ChecklistItem_Checklist");
         });
 
         modelBuilder.Entity<Note>(entity =>
@@ -62,6 +87,7 @@ public partial class TracesDbContext : DbContext
             entity.HasKey(e => e.NoIdPk).HasName("PK__Notes__14F9C02A6FC3F9F8");
 
             entity.Property(e => e.Content).HasMaxLength(500);
+            entity.Property(e => e.TripDayFk).HasColumnName("TripDayFK");
             entity.Property(e => e.TripFk).HasColumnName("TripFK");
 
             entity.HasOne(d => d.TripFkNavigation).WithMany(p => p.Notes)

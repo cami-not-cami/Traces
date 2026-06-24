@@ -23,6 +23,10 @@
          "ObjectType": 0
       },
       {
+         "Name": "[dbo].[ChecklistItem]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[Notes]",
          "ObjectType": 0
       },

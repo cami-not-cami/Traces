@@ -11,11 +11,15 @@ public partial class Checklist
 
     public int? TripFk { get; set; }
 
-    public string Content { get; set; }
+    public int? TripDayFk { get; set; }
 
-    public bool? IsCompleted { get; set; }
+    public string Title { get; set; }
 
     public int OrderIndex { get; set; }
+
+    public virtual ICollection<ChecklistItem> ChecklistItems { get; set; } = new List<ChecklistItem>();
+
+    public virtual TripDay TripDayFkNavigation { get; set; }
 
     public virtual Trip TripFkNavigation { get; set; }
 }
