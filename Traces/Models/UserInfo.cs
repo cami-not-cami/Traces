@@ -11,9 +11,7 @@ public partial class UserInfo
 
     public string UserFk { get; set; }
 
-    public string FirstName { get; set; }
-
-    public string LastName { get; set; }
+    public string Email { get; set; }
 
     public virtual ICollection<TripMember> TripMembers { get; set; } = new List<TripMember>();
 }

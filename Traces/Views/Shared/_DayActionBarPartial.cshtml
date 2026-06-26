@@ -1,0 +1,121 @@
+@model dynamic
+@{
+    int dayNumber = Model.DayNumber;
+    int tripDayId = Model.TripDayId;
+    int tripId = Model.TripId;
+    string dayLabel = Model.DayLabel;
+    string tripTitle = Model.TripTitle ?? "";
+    string tripStartDate = Model.TripStartDate ?? "";
+    string tripEndDate = Model.TripEndDate ?? "";
+}
+
+<div class="day-action-bar-container mt-5" data-day-id="@tripDayId" data-trip-id="@tripId">
+    <!-- Bar Row -->
+    <div class="flex items-center space-x-2 bg-slate-100/80 hover:bg-slate-100 border border-slate-200/60 rounded-2xl p-2.5 transition-all shadow-sm">
+        <!-- Add a place trigger -->
+        <button type="button" onclick="toggleActionBarForm(this, 'place')" class="flex-1 flex items-center text-slate-500 hover:text-slate-700 text-sm font-medium px-2.5 py-1.5 rounded-xl text-left transition-all">
+            <svg class="w-4.5 h-4.5 mr-2 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            Add a place
+        </button>
+
+        <!-- Quick actions -->
+        <div class="flex items-center space-x-1 shrink-0 border-l border-slate-200/80 pl-2">
+            <!-- Add Note Button -->
+            <button type="button" onclick="toggleActionBarForm(this, 'note')" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white transition-all" title="Add Note">
+                <svg class="w-5.5 h-5.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+            </button>
+            <!-- Add Checklist Button -->
+            <button type="button" onclick="toggleActionBarForm(this, 'checklist')" class="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-white transition-all" title="Add Checklist">
+                <svg class="w-5.5 h-5.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- 1. Inline Form: Add Place -->
+    <form asp-controller="Trip" asp-action="AddActivityToTrip" method="post" class="hidden form-place bg-slate-50 border border-slate-200/80 rounded-2xl p-5 mt-3 space-y-3 shadow-sm text-left animate-in fade-in-50 duration-200">
+        <input type="hidden" name="TripId" value="@tripId" />
+        <input type="hidden" name="TripTitle" value="@tripTitle" />
+        <input type="hidden" name="TripStartDate" value="@tripStartDate" />
+        <input type="hidden" name="TripEndDate" value="@tripEndDate" />
+        <input type="hidden" name="DayNumber" value="@dayNumber" />
+        <input type="hidden" name="GooglePlaceId" />
+        <input type="hidden" name="Latitude" />
+        <input type="hidden" name="Longitude" />
+        <input type="hidden" name="FormattedAddress" />
+
+        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Add place to @dayLabel</div>
+        <div class="grid grid-cols-1 gap-3">
+            <div class="relative">
+                <input type="text" name="PlaceName" class="day-autocomplete w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" required placeholder="Search place..." autocomplete="off" />
+                <div class="suggestions-dropdown absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto hidden z-50"></div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Category</label>
+                    <select name="Category" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                        <option value="Attraction">Attraction</option>
+                        <option value="Food">Food / Dining</option>
+                        <option value="Lodging">Lodging</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Transit">Transit</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Start Time</label>
+                    <input type="time" name="StartTime" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+                </div>
+                <div>
+                    <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">End Time</label>
+                    <input type="time" name="EndTime" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+                </div>
+            </div>
+            <div>
+                <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Notes</label>
+                <textarea name="Notes" placeholder="Add details..." rows="1" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400"></textarea>
+            </div>
+        </div>
+        <div class="flex justify-end space-x-2 pt-2 border-t border-slate-200/50">
+            <button type="button" onclick="cancelActionBarForm(this)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+                Cancel
+            </button>
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+                Add Place
+            </button>
+        </div>
+    </form>
+
+    <!-- 2. Inline Form: Add Note -->
+    <div class="hidden form-note bg-slate-50 border border-slate-200/80 rounded-2xl p-5 mt-3 space-y-3 shadow-sm text-left animate-in fade-in-50 duration-200">
+        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Add note to @dayLabel</div>
+        <textarea name="NoteContent" placeholder="Write a note..." rows="2" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" required></textarea>
+        <div class="flex justify-end space-x-2 pt-2 border-t border-slate-200/50">
+            <button type="button" onclick="cancelActionBarForm(this)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+                Cancel
+            </button>
+            <button type="button" onclick="submitNoteForm(this)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+                Add Note
+            </button>
+        </div>
+    </div>
+
+    <!-- 3. Inline Form: Add Checklist -->
+    <div class="hidden form-checklist bg-slate-50 border border-slate-200/80 rounded-2xl p-5 mt-3 space-y-3 shadow-sm text-left animate-in fade-in-50 duration-200">
+        <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Add checklist to @dayLabel</div>
+        <input type="text" name="ChecklistTitle" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" placeholder="Checklist Title (e.g. Things to bring)..." required />
+        <div class="flex justify-end space-x-2 pt-2 border-t border-slate-200/50">
+            <button type="button" onclick="cancelActionBarForm(this)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
+                Cancel
+            </button>
+            <button type="button" onclick="submitChecklistForm(this)" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+                Add Checklist
+            </button>
+        </div>
+    </div>
+</div>

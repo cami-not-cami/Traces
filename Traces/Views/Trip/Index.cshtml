@@ -178,18 +178,18 @@
                             <div class="flex -space-x-2">
                                 @foreach (var member in Model.Members.Take(3))
                                 {
-                                    var initial1 = !string.IsNullOrEmpty(member.FirstName) ? member.FirstName[0].ToString() : "";
-                                    var initial2 = !string.IsNullOrEmpty(member.LastName) ? member.LastName[0].ToString() : "";
-                                    var initials = (initial1 + initial2).ToUpper();
+                                    var initial1 = !string.IsNullOrEmpty(member.Email) ? member.Email[0].ToString() : "";
+                                   
+                                    var initials = (initial1).ToUpper();
                                     if (string.IsNullOrEmpty(initials)) initials = "U";
-                                    <div class="w-9 h-9 rounded-full border-2 border-white bg-indigo-150 flex items-center justify-center text-xs font-bold text-indigo-700 shadow-md" title="@member.FullName">
+                                    <div class="w-9 h-9 rounded-full border-2 border-white bg-indigo-150 flex items-center justify-center text-xs font-bold text-indigo-700 shadow-md" title="@member.Email">
                                         @initials
                                     </div>
                                 }
                             </div>
                             @if (!Model.ViewOnly)
                             {
-                                <div class="w-9 h-9 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-xs text-slate-500 font-bold shadow-md hover:bg-slate-100 cursor-pointer transition-colors" title="Invite Friends">
+                                <div onclick="openInviteModal()" class="w-9 h-9 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-xs text-slate-500 font-bold shadow-md hover:bg-slate-100 cursor-pointer transition-colors" title="Invite Friends">
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                                         <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
                                     </svg>
@@ -325,51 +325,143 @@
                                     </div>
 
                                     <!-- Activities in the day -->
-                                    <div class="activities-container space-y-6 mb-4" data-day-id="@day.TripDayId">
-                                        @foreach (var activity in day.Activities)
+                                    <div class="activities-container space-y-6 mb-4 animate-in fade-in-50 duration-200" data-day-id="@day.TripDayId">
+                                        @foreach (var item in day.TimelineItems)
                                         {
-                                            <div class="activity-card bg-white border border-slate-150 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start @(Model.ViewOnly ? "" : "cursor-grab active:cursor-grabbing")" draggable="@(Model.ViewOnly ? "false" : "true")" data-activity-id="@activity.TripActivityId">
-                                                <!-- Drag handle -->
-                                                @if (!Model.ViewOnly)
-                                                {
-                                                    <div class="mr-3 mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
-                                                        </svg>
-                                                    </div>
-                                                }
+                                            if (item.Type == "Activity" && item.Activity != null)
+                                            {
+                                                var activity = item.Activity;
+                                                <div class="timeline-card activity-card bg-white border border-slate-150 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start @(Model.ViewOnly ? "" : "cursor-grab active:cursor-grabbing")" draggable="@(Model.ViewOnly ? "false" : "true")" data-timeline-id="@item.Id" data-timeline-type="Activity">
+                                                    <!-- Drag handle -->
+                                                    @if (!Model.ViewOnly)
+                                                    {
+                                                        <div class="mr-3 mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
+                                                            </svg>
+                                                        </div>
+                                                    }
 
-                                                <div class="space-y-2 flex-1 pr-4">
-                                                    <div class="flex items-center space-x-2">
-                                                        <span class="bg-indigo-50 text-indigo-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                                                            @(activity.Place?.PrimaryCategory ?? "Activity")
-                                                        </span>
-                                                        @if (activity.StartTime.HasValue)
-                                                        {
-                                                            <span class="text-xs text-slate-500 font-medium">
-                                                                @activity.StartTime.Value.ToString("hh:mm tt")
-                                                                @if (activity.EndTime.HasValue)
-                                                                {
-                                                                    <span>- @activity.EndTime.Value.ToString("hh:mm tt")</span>
-                                                                }
+                                                    <div class="space-y-2 flex-1 pr-4">
+                                                        <div class="flex items-center space-x-2">
+                                                            <span class="bg-indigo-50 text-indigo-700 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                                                                @(activity.Place?.PrimaryCategory ?? "Activity")
                                                             </span>
+                                                            @if (activity.StartTime.HasValue)
+                                                            {
+                                                                <span class="text-xs text-slate-500 font-medium">
+                                                                    @activity.StartTime.Value.ToString("hh:mm tt")
+                                                                    @if (activity.EndTime.HasValue)
+                                                                    {
+                                                                        <span>- @activity.EndTime.Value.ToString("hh:mm tt")</span>
+                                                                    }
+                                                                </span>
+                                                            }
+                                                        </div>
+                                                        <h4 class="font-bold text-slate-900 text-base leading-snug hover:text-indigo-600 hover:underline cursor-pointer" onclick="showPlaceDetailsPopup('@activity.Place?.GooglePlaceId')">@activity.Place?.Name</h4>
+                                                        <p class="text-xs text-slate-450">@activity.Place?.FormattedAddress</p>
+                                                    </div>
+
+                                                    <div class="flex items-center space-x-2 shrink-0">
+                                                        <span class="bg-emerald-50 text-emerald-700 border border-emerald-150 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md">
+                                                            @activity.Status
+                                                        </span>
+                                                        @if (!Model.ViewOnly)
+                                                        {
+                                                            <button type="button" onclick="deleteTimelineItem(@item.Id, 'Activity')" class="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100" title="Delete Place">
+                                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                            </button>
                                                         }
                                                     </div>
-                                                    <h4 class="font-bold text-slate-900 text-base leading-snug hover:text-indigo-600 hover:underline cursor-pointer" onclick="showPlaceDetailsPopup('@activity.Place?.GooglePlaceId')">@activity.Place?.Name</h4>
-                                                    <p class="text-xs text-slate-450">@activity.Place?.FormattedAddress</p>
                                                 </div>
 
-                                                <span class="bg-emerald-50 text-emerald-700 border border-emerald-150 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md">
-                                                    @activity.Status
-                                                </span>
-                                            </div>
-
-                                            <!-- Display Route information if present -->
-                                            @if (activity.RouteToNext != null)
+                                                <!-- Display Route information if present -->
+                                                if (activity.RouteToNext != null)
+                                                {
+                                                    <div class="flex items-center space-x-2 text-xs font-semibold text-slate-400 bg-slate-50/55 border border-slate-200/50 rounded-xl px-4 py-2 ml-4 mr-4 animate-in fade-in-50">
+                                                        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                                        <span>@activity.RouteToNext.TravelMode: @((activity.RouteToNext.DistanceMeters / 1000.0).ToString("N1")) km (@(activity.RouteToNext.DurationSeconds / 60) mins)</span>
+                                                    </div>
+                                                }
+                                            }
+                                            else if (item.Type == "Note" && item.Note != null)
                                             {
-                                                <div class="flex items-center space-x-2 text-xs font-semibold text-slate-400 bg-slate-50/50 border border-slate-200/50 rounded-xl px-4 py-2 ml-4 mr-4">
-                                                    <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                                    <span>@activity.RouteToNext.TravelMode: @((activity.RouteToNext.DistanceMeters / 1000.0).ToString("N1")) km (@(activity.RouteToNext.DurationSeconds / 60) mins)</span>
+                                                <div class="timeline-card activity-card bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start @(Model.ViewOnly ? "" : "cursor-grab active:cursor-grabbing")" draggable="@(Model.ViewOnly ? "false" : "true")" data-timeline-id="@item.Id" data-timeline-type="Note">
+                                                    <div class="flex items-start space-x-3 flex-1 pr-4">
+                                                        @if (!Model.ViewOnly)
+                                                        {
+                                                            <div class="mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
+                                                                </svg>
+                                                            </div>
+                                                        }
+                                                        <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                                            </svg>
+                                                        </div>
+                                                        <div class="text-sm text-slate-650 leading-relaxed pt-0.5 whitespace-pre-line">
+                                                            @item.Note.Content
+                                                        </div>
+                                                    </div>
+                                                    @if (!Model.ViewOnly)
+                                                    {
+                                                        <button type="button" onclick="deleteTimelineItem(@item.Id, 'Note')" class="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100" title="Delete Note">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            }
+                                            else if (item.Type == "Checklist" && item.Checklist != null)
+                                            {
+                                                <div class="timeline-card activity-card bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start @(Model.ViewOnly ? "" : "cursor-grab active:cursor-grabbing")" draggable="@(Model.ViewOnly ? "false" : "true")" data-timeline-id="@item.Id" data-timeline-type="Checklist">
+                                                    <div class="flex items-start space-x-3 flex-1 pr-4">
+                                                        @if (!Model.ViewOnly)
+                                                        {
+                                                            <div class="mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
+                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
+                                                                </svg>
+                                                            </div>
+                                                        }
+                                                        <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                                            </svg>
+                                                        </div>
+                                                        <div class="flex-1 pt-0.5">
+                                                            <h4 class="font-bold text-slate-800 text-sm mb-3">@item.Checklist.Title</h4>
+                                                            <ul class="space-y-2.5 mb-3 checklist-items-list" data-checklist-id="@item.Id">
+                                                                @foreach (var chItem in item.Checklist.ChecklistItems.OrderBy(ci => ci.OrderIndex))
+                                                                {
+                                                                    <li class="flex items-center text-xs text-slate-600" data-item-id="@chItem.ChItIdPk">
+                                                                        <input type="checkbox" @(chItem.IsCompleted ? "checked" : "") onchange="toggleChecklistItem(this)" class="mr-2.5 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 @(Model.ViewOnly ? "pointer-events-none" : "")" />
+                                                                        <span class="@(chItem.IsCompleted ? "line-through text-slate-400" : "text-slate-700 font-medium")">@chItem.Content</span>
+                                                                    </li>
+                                                                }
+                                                            </ul>
+                                                            @if (!Model.ViewOnly)
+                                                            {
+                                                                <div class="flex items-center space-x-2 mt-2 pt-1.5 border-t border-slate-200/50">
+                                                                    <input type="text" placeholder="Add some items..." class="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs w-full max-w-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" onkeydown="handleAddChecklistItemKeyDown(event, @item.Id)" />
+                                                                    <button type="button" onclick="submitNewChecklistItem(this, @item.Id)" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 px-2 py-1">Add</button>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    @if (!Model.ViewOnly)
+                                                    {
+                                                        <button type="button" onclick="deleteTimelineItem(@item.Id, 'Checklist')" class="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100" title="Delete Checklist">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    }
                                                 </div>
                                             }
                                         }
@@ -377,11 +469,12 @@
 
                                     @if (!Model.ViewOnly)
                                     {
-                                        <!-- Inline Add Place Form for this day -->
-                                        @await Html.PartialAsync("_InlineAddPlacePartial", new
+                                        <!-- Unified Day Action Bar -->
+                                        @await Html.PartialAsync("_DayActionBarPartial", new
                                         {
                                             DayNumber = day.DayNumber,
                                             DayLabel = day.DayLabel,
+                                            TripDayId = day.TripDayId,
                                             TripId = Model.TripId,
                                             TripTitle = Model.Title,
                                             TripStartDate = Model.StartDate?.ToString("yyyy-MM-dd"),
@@ -428,68 +521,7 @@
                     </div>
                 </div>
 
-                <!-- 4. TRIP NOTES & CHECKLISTS -->
-                <div id="notes" class="mb-14 border-t border-slate-200/60 pt-10">
-                    <h2 class="text-xl font-extrabold text-slate-900 mb-5 tracking-tight flex items-center">
-                        <svg class="w-5.5 h-5.5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        Trip Notes & Checklists
-                    </h2>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Notes Sub-card -->
-                        <div class="bg-slate-50 border border-slate-200/50 rounded-2xl p-6 shadow-sm">
-                            <h3 class="font-bold text-slate-700 text-sm uppercase tracking-wider mb-4 flex items-center">
-                                <svg class="w-4 h-4 mr-1.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                </svg>
-                                Notes
-                            </h3>
-                            @if (Model.Notes != null && Model.Notes.Any())
-                            {
-                                <div class="space-y-3">
-                                    @foreach (var note in Model.Notes)
-                                    {
-                                        <div class="bg-white border border-slate-150 rounded-xl p-4 text-sm text-slate-650 leading-relaxed shadow-sm">
-                                            @note.Content
-                                        </div>
-                                    }
-                                </div>
-                            }
-                            else
-                            {
-                                <p class="text-xs text-slate-400 italic">No notes added for this trip yet. Add them when adding a place!</p>
-                            }
-                        </div>
 
-                        <!-- Checklist Sub-card -->
-                        <div class="bg-slate-50 border border-slate-200/50 rounded-2xl p-6 shadow-sm">
-                            <h3 class="font-bold text-slate-700 text-sm uppercase tracking-wider mb-4 flex items-center">
-                                <svg class="w-4 h-4 mr-1.5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                </svg>
-                                Checklist
-                            </h3>
-                            @if (Model.Checklists != null && Model.Checklists.Any())
-                            {
-                                <ul class="space-y-3">
-                                    @foreach (var checklist in Model.Checklists)
-                                    {
-                                        <li class="flex items-center text-sm text-slate-600 bg-white border border-slate-150 rounded-xl p-3.5 shadow-sm">
-                                            <input type="checkbox" checked="@(checklist.IsCompleted ?? false)" disabled class="mr-3 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300" />
-                                            <span class="@(checklist.IsCompleted == true ? "line-through text-slate-400" : "font-medium text-slate-700")">@checklist.Content</span>
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                            else
-                            {
-                                <p class="text-xs text-slate-400 italic">No checklist items for this trip.</p>
-                            }
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </main>
@@ -499,7 +531,7 @@
 
 </div>
 
-<!-- PLACE DETAILS FLOATING DRAWER (Wanderlog style) -->
+<!-- PLACE DETAILS FLOATING DRAWER -->
 <div id="place-details-modal" class="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100%-2rem)] sm:w-[420px] max-h-[80vh] sm:max-h-[75vh] pointer-events-none flex flex-col hidden transition-opacity duration-300 opacity-0">
     <div id="place-details-card" class="bg-white rounded-3xl shadow-2xl border border-slate-200/80 w-full max-h-full overflow-hidden transform scale-95 opacity-0 transition-all duration-300 flex flex-col pointer-events-auto">
         <!-- Header Image area -->
@@ -577,6 +609,47 @@
         </div>
 
    </div>
+<div id="invite-member-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4 backdrop-blur-sm hidden">
+
+    <div class="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl transition-all">
+
+        <div class="relative px-6 pt-6 pb-4">
+            <h3 class="text-xl font-semibold text-gray-900">Invite Trip Member</h3>
+            <p class="mt-1 text-sm text-gray-500">The invited person will be a collaborator.</p>
+
+            <button onclick="closeInviteModal()" class="absolute top-6 right-6 text-gray-400 hover:text-gray-600 focus:outline-none">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <form id="invite-member-form" class="space-y-4">
+            <div class="px-6 py-4">
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <input type="email"
+                       id="email"
+                       name="email"
+                       placeholder="tripmember@email.com"
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                       required />
+            </div>
+
+            <div class="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-3 space-y-2 space-y-reverse sm:space-y-0">
+                <button type="button" onclick="closeInviteModal()"
+                        class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Cancel
+                </button>
+                <button type="submit"
+                        class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-sm">
+                    Send Invite
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
    <script>
     window.TripConfig = {
         googleApiKey: '@Configuration["ApiKeys:GoogleApiKey"]',
@@ -587,6 +660,7 @@
         firstPlaceId: '@(Model.PlacesToVisit?.FirstOrDefault()?.GooglePlaceId)',
         updateDetailsUrl: '@Url.Action("UpdateTripDetails", "Trip")',
         setBudgetUrl: '@Url.Action("SetBudget", "Trip")',
+        inviteMemberUrl: '@Url.Action("InviteTripMember", "Trip")',
         places: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
             (Model.PlacesToVisit ?? new List<PlaceViewModel>())
             .Concat((Model.Days ?? new List<TripDayViewModel>()).SelectMany(d => d.Activities ?? new List<TripActivityViewModel>()).Where(a => a.Place != null).Select(a => a.Place))

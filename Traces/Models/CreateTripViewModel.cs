@@ -29,9 +29,7 @@ namespace Traces.Models
     {
         public int TripMemberId { get; set; }
         public string UserId { get; set; }
-        public string FirstName { get; set; }
-        public string LastName { get; set; }
-        public string FullName => $"{FirstName} {LastName}";
+        public string Email { get; set; }
     }
 
     public class TripDayViewModel
@@ -44,6 +42,18 @@ namespace Traces.Models
             : $"Day {DayNumber}";
 
         public List<TripActivityViewModel> Activities { get; set; } = new();
+        public List<TimelineItemViewModel> TimelineItems { get; set; } = new();
+    }
+
+    public class TimelineItemViewModel
+    {
+        public int Id { get; set; }
+        public string Type { get; set; } // "Activity", "Note", "Checklist"
+        public int OrderIndex { get; set; }
+
+        public TripActivityViewModel Activity { get; set; }
+        public Note Note { get; set; }
+        public Checklist Checklist { get; set; }
     }
 
     public class TripActivityViewModel

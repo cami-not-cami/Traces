@@ -17,5 +17,7 @@ public partial class Note
 
     public int? TripDayFk { get; set; }
 
+    public virtual TripDay TripDayFkNavigation { get; set; }
+
     public virtual Trip TripFkNavigation { get; set; }
 }

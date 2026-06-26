@@ -38,18 +38,30 @@ namespace Traces.Controllers
                             var sessionTrips = JsonSerializer.Deserialize<List<int>>(sessionTripsStr);
                             if (sessionTrips != null && sessionTrips.Any())
                             {
-                                var userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.UserFk == userId);
-                                if (userInfo == null)
-                                {
-                                    userInfo = new UserInfo
-                                    {
-                                        UserFk = userId,
-                                        FirstName = User.Identity.Name ?? "User",
-                                        LastName = ""
-                                    };
-                                    _context.UserInfos.Add(userInfo);
-                                    await _context.SaveChangesAsync();
-                                }
+                                 var userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.UserFk == userId);
+                                 if (userInfo == null)
+                                 {
+                                     var userEmail = User.Identity.Name;
+                                     if (!string.IsNullOrEmpty(userEmail))
+                                     {
+                                         userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.Email == userEmail);
+                                     }
+
+                                     if (userInfo == null)
+                                     {
+                                         userInfo = new UserInfo
+                                         {
+                                             UserFk = userId,
+                                             Email = userEmail ?? "User"
+                                         };
+                                         _context.UserInfos.Add(userInfo);
+                                     }
+                                     else
+                                     {
+                                         userInfo.UserFk = userId;
+                                     }
+                                     await _context.SaveChangesAsync();
+                                 }
 
                                 foreach (var tripIdToLink in sessionTrips)
                                 {
@@ -87,13 +99,25 @@ namespace Traces.Controllers
                     var userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.UserFk == userId);
                     if (userInfo == null)
                     {
-                        userInfo = new UserInfo
+                        var userEmail = User.Identity.Name;
+                        if (!string.IsNullOrEmpty(userEmail))
                         {
-                            UserFk = userId,
-                            FirstName = User.Identity.Name ?? "User",
-                            LastName = ""
-                        };
-                        _context.UserInfos.Add(userInfo);
+                            userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.Email == userEmail);
+                        }
+
+                        if (userInfo == null)
+                        {
+                            userInfo = new UserInfo
+                            {
+                                UserFk = userId,
+                                Email = userEmail ?? "User",
+                            };
+                            _context.UserInfos.Add(userInfo);
+                        }
+                        else
+                        {
+                            userInfo.UserFk = userId;
+                        }
                         await _context.SaveChangesAsync();
                     }
 
@@ -392,6 +416,7 @@ namespace Traces.Controllers
         {
             var trip = await _context.Trips
                 .Include(t => t.Checklists)
+                    .ThenInclude(c => c.ChecklistItems)
                 .Include(t => t.Notes)
                 .Include(t => t.TripDays)
                     .ThenInclude(d => d.TripActivities)
@@ -400,6 +425,11 @@ namespace Traces.Controllers
                 .Include(t => t.TripDays)
                     .ThenInclude(d => d.TripActivities)
                         .ThenInclude(a => a.RouteToNextFromActivityFkNavigations)
+                .Include(t => t.TripDays)
+                    .ThenInclude(d => d.Notes)
+                .Include(t => t.TripDays)
+                    .ThenInclude(d => d.Checklists)
+                        .ThenInclude(c => c.ChecklistItems)
                 .FirstOrDefaultAsync(t => t.TrIdPk == tripId);
 
             if (trip == null) return null;
@@ -412,44 +442,85 @@ namespace Traces.Controllers
                 {
                     TripMemberId = tm.IdFk,
                     UserId = tm.IdFkNavigation.UserFk,
-                    FirstName = tm.IdFkNavigation.FirstName,
-                    LastName = tm.IdFkNavigation.LastName
+                    Email = tm.IdFkNavigation.Email,
+                   
                 })
                 .ToListAsync();
 
             // Map DB TripDay and TripActivity models to ViewModels
             var dayViewModels = trip.TripDays
                 .OrderBy(d => d.DayNumber)
-                .Select(d => new TripDayViewModel
+                .Select(d =>
                 {
-                    TripDayId = d.TrDaIdPk,
-                    DayNumber = d.DayNumber ?? 0,
-                    Date = d.Date == DateOnly.MinValue ? (DateOnly?)null : d.Date,
-                    Activities = d.TripActivities
-                        .OrderBy(a => a.OrderIndex)
-                        .Select(a => new TripActivityViewModel
-                        {
-                            TripActivityId = a.TrAcIdPk,
-                            TripDayId = a.TripDayFk,
-                            StartTime = a.StartTime.HasValue ? d.Date.ToDateTime(a.StartTime.Value) : null,
-                            EndTime = a.EndTime.HasValue ? d.Date.ToDateTime(a.EndTime.Value) : null,
-                            OrderIndex = a.OrderIndex,
-                            Status = a.Status,
-                            Place = new PlaceViewModel
+                    var dayVm = new TripDayViewModel
+                    {
+                        TripDayId = d.TrDaIdPk,
+                        DayNumber = d.DayNumber ?? 0,
+                        Date = d.Date == DateOnly.MinValue ? (DateOnly?)null : d.Date,
+                        Activities = d.TripActivities
+                            .OrderBy(a => a.OrderIndex)
+                            .Select(a => new TripActivityViewModel
                             {
-                                PlaceId = a.PlaceFkNavigation.PlIdPk,
-                                GooglePlaceId = a.PlaceFkNavigation.GooglePlaceId,
-                                Name = a.PlaceFkNavigation.Name,
-                                Latitude = a.PlaceFkNavigation.Latitude,
-                                Longitude = a.PlaceFkNavigation.Longitude,
-                                FormattedAddress = a.PlaceFkNavigation.FormattedAddress,
-                                City = a.PlaceFkNavigation.City,
-                                PrimaryCategory = a.PlaceFkNavigation.PrimaryCategory,
-                                CoverPhoto = a.PlaceFkNavigation.PlacePhotos.FirstOrDefault()?.GooglePhotoReference
-                            },
-                            RouteToNext = a.RouteToNextFromActivityFkNavigations.FirstOrDefault()
-                        })
-                        .ToList()
+                                TripActivityId = a.TrAcIdPk,
+                                TripDayId = a.TripDayFk,
+                                StartTime = a.StartTime.HasValue ? d.Date.ToDateTime(a.StartTime.Value) : null,
+                                EndTime = a.EndTime.HasValue ? d.Date.ToDateTime(a.EndTime.Value) : null,
+                                OrderIndex = a.OrderIndex,
+                                Status = a.Status,
+                                Place = new PlaceViewModel
+                                {
+                                    PlaceId = a.PlaceFkNavigation.PlIdPk,
+                                    GooglePlaceId = a.PlaceFkNavigation.GooglePlaceId,
+                                    Name = a.PlaceFkNavigation.Name,
+                                    Latitude = a.PlaceFkNavigation.Latitude,
+                                    Longitude = a.PlaceFkNavigation.Longitude,
+                                    FormattedAddress = a.PlaceFkNavigation.FormattedAddress,
+                                    City = a.PlaceFkNavigation.City,
+                                    PrimaryCategory = a.PlaceFkNavigation.PrimaryCategory,
+                                    CoverPhoto = a.PlaceFkNavigation.PlacePhotos.FirstOrDefault()?.GooglePhotoReference
+                                },
+                                RouteToNext = a.RouteToNextFromActivityFkNavigations.FirstOrDefault()
+                            })
+                            .ToList()
+                    };
+
+                    var items = new List<TimelineItemViewModel>();
+
+                    foreach (var act in dayVm.Activities)
+                    {
+                        items.Add(new TimelineItemViewModel
+                        {
+                            Id = act.TripActivityId,
+                            Type = "Activity",
+                            OrderIndex = act.OrderIndex,
+                            Activity = act
+                        });
+                    }
+
+                    foreach (var note in d.Notes)
+                    {
+                        items.Add(new TimelineItemViewModel
+                        {
+                            Id = note.NoIdPk,
+                            Type = "Note",
+                            OrderIndex = note.OrderIndex ?? 0,
+                            Note = note
+                        });
+                    }
+
+                    foreach (var ch in d.Checklists)
+                    {
+                        items.Add(new TimelineItemViewModel
+                        {
+                            Id = ch.ChIdPk,
+                            Type = "Checklist",
+                            OrderIndex = ch.OrderIndex,
+                            Checklist = ch
+                        });
+                    }
+
+                    dayVm.TimelineItems = items.OrderBy(i => i.OrderIndex).ThenBy(i => i.Id).ToList();
+                    return dayVm;
                 })
                 .ToList();
 
@@ -494,8 +565,157 @@ namespace Traces.Controllers
             if (trip == null) return NotFound();
             if (!string.IsNullOrEmpty(title)) trip.Title = title;
             if (!string.IsNullOrEmpty(description)) trip.Description = description;
-            if (DateOnly.TryParse(startDate, out var sDate)) trip.StartDate = sDate;
-            if (DateOnly.TryParse(endDate, out var eDate)) trip.EndDate = eDate;
+
+            DateOnly? sDate = null;
+            if (startDate != null && DateOnly.TryParse(startDate, out var parsedStart)) sDate = parsedStart;
+
+            DateOnly? eDate = null;
+            if (endDate != null && DateOnly.TryParse(endDate, out var parsedEnd)) eDate = parsedEnd;
+
+            bool datesChanged = false;
+            if (sDate != trip.StartDate || eDate != trip.EndDate)
+            {
+                datesChanged = true;
+                trip.StartDate = sDate;
+                trip.EndDate = eDate;
+            }
+
+            if (datesChanged)
+            {
+                var existingDays = await _context.TripDays
+                    .Where(d => d.TripFk == trip.TrIdPk)
+                    .ToListAsync();
+
+                var day0 = existingDays.FirstOrDefault(d => d.DayNumber == 0);
+                if (day0 == null)
+                {
+                    day0 = new TripDay
+                    {
+                        TripFk = trip.TrIdPk,
+                        DayNumber = 0,
+                        Date = DateOnly.MinValue
+                    };
+                    _context.TripDays.Add(day0);
+                    await _context.SaveChangesAsync();
+                }
+
+                var activeDays = existingDays
+                    .Where(d => d.DayNumber > 0)
+                    .OrderBy(d => d.DayNumber)
+                    .ToList();
+
+                var targetDates = new List<DateOnly>();
+                if (trip.StartDate.HasValue && trip.EndDate.HasValue && trip.StartDate.Value <= trip.EndDate.Value)
+                {
+                    var current = trip.StartDate.Value;
+                    while (current <= trip.EndDate.Value)
+                    {
+                        targetDates.Add(current);
+                        current = current.AddDays(1);
+                    }
+                }
+
+                int targetCount = targetDates.Count;
+
+                // 1. Update or create days up to targetCount
+                for (int i = 0; i < targetCount; i++)
+                {
+                    int dayNum = i + 1;
+                    var dateVal = targetDates[i];
+
+                    if (i < activeDays.Count)
+                    {
+                        var dayToUpdate = activeDays[i];
+                        dayToUpdate.DayNumber = dayNum;
+                        dayToUpdate.Date = dateVal;
+                        _context.TripDays.Update(dayToUpdate);
+                    }
+                    else
+                    {
+                        var newDay = new TripDay
+                        {
+                            TripFk = trip.TrIdPk,
+                            DayNumber = dayNum,
+                            Date = dateVal
+                        };
+                        _context.TripDays.Add(newDay);
+                    }
+                }
+
+                // 2. Handle excess active days
+                if (activeDays.Count > targetCount)
+                {
+                    var excessDays = activeDays.Skip(targetCount).ToList();
+                    foreach (var extraDay in excessDays)
+                    {
+                        // Move activities
+                        var activitiesToMove = await _context.TripActivities
+                            .Where(a => a.TripDayFk == extraDay.TrDaIdPk)
+                            .ToListAsync();
+                        if (activitiesToMove.Any())
+                        {
+                            var activityIds = activitiesToMove.Select(a => a.TrAcIdPk).ToList();
+                            var routesToDelete = await _context.RouteToNexts
+                                .Where(r => activityIds.Contains(r.FromActivityFk) || activityIds.Contains(r.ToActivityFk))
+                                .ToListAsync();
+                            if (routesToDelete.Any())
+                            {
+                                _context.RouteToNexts.RemoveRange(routesToDelete);
+                            }
+
+                            int nextOrderIndex = (await _context.TripActivities
+                                .Where(a => a.TripDayFk == day0.TrDaIdPk)
+                                .Select(a => (int?)a.OrderIndex)
+                                .MaxAsync() ?? -1) + 1;
+
+                            foreach (var act in activitiesToMove)
+                            {
+                                act.TripDayFk = day0.TrDaIdPk;
+                                act.OrderIndex = nextOrderIndex++;
+                            }
+                        }
+
+                        // Move notes
+                        var notesToMove = await _context.Notes
+                            .Where(n => n.TripDayFk == extraDay.TrDaIdPk)
+                            .ToListAsync();
+                        if (notesToMove.Any())
+                        {
+                            int nextNoteOrder = (await _context.Notes
+                                .Where(n => n.TripDayFk == day0.TrDaIdPk)
+                                .Select(n => n.OrderIndex)
+                                .MaxAsync() ?? -1) + 1;
+
+                            foreach (var note in notesToMove)
+                            {
+                                note.TripDayFk = day0.TrDaIdPk;
+                                note.OrderIndex = nextNoteOrder++;
+                            }
+                        }
+
+                        // Move checklists
+                        var checklistsToMove = await _context.Checklists
+                            .Where(c => c.TripDayFk == extraDay.TrDaIdPk)
+                            .ToListAsync();
+                        if (checklistsToMove.Any())
+                        {
+                            int nextChecklistOrder = (await _context.Checklists
+                                .Where(c => c.TripDayFk == day0.TrDaIdPk)
+                                .Select(c => (int?)c.OrderIndex)
+                                .MaxAsync() ?? -1) + 1;
+
+                            foreach (var checklist in checklistsToMove)
+                            {
+                                checklist.TripDayFk = day0.TrDaIdPk;
+                                checklist.OrderIndex = nextChecklistOrder++;
+                            }
+                        }
+
+                        _context.TripDays.Remove(extraDay);
+                    }
+                }
+            }
+
             if (!string.IsNullOrEmpty(placeName) || !string.IsNullOrEmpty(googlePlaceId) || !string.IsNullOrEmpty(latitude) || !string.IsNullOrEmpty(longitude))
             {
                 decimal? lat = null;
@@ -590,10 +810,10 @@ namespace Traces.Controllers
                 {
                     existingActivity.OrderIndex = 0;
                 }
-                _context.Trips.Update(trip);
-                await _context.SaveChangesAsync();
-                return StatusCode(200);
             }
+
+            _context.Trips.Update(trip);
+            await _context.SaveChangesAsync();
             return StatusCode(200);
         }
         [HttpPost]
@@ -731,7 +951,6 @@ namespace Traces.Controllers
             {
                 var note = new Note
                 {
-                    NoIdPk = (await _context.Notes.Select(n => (int?)n.NoIdPk).MaxAsync() ?? 0) + 1,
                     TripFk = tripId,
                     Content = notes
                 };
@@ -969,37 +1188,59 @@ namespace Traces.Controllers
             await _context.SaveChangesAsync();
         }
 
-        private async Task LinkUserToTripAsync(int tripId)
+        private async Task LinkUserToTripAsync(int tripId, string tripMemberEmail = "")
         {
-            if (User.Identity != null && User.Identity.IsAuthenticated)
+            UserInfo userInfo = null;
+
+            if (!string.IsNullOrEmpty(tripMemberEmail))
+            {
+                userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.Email == tripMemberEmail);
+                if (userInfo == null)
+                {
+                    userInfo = new UserInfo
+                    {
+                        UserFk = "pending_" + Guid.NewGuid().ToString(),
+                        Email = tripMemberEmail
+                    };
+                    _context.UserInfos.Add(userInfo);
+                    await _context.SaveChangesAsync();
+                }
+            }
+            else if (User.Identity != null && User.Identity.IsAuthenticated)
             {
                 var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
                           ?? User.FindFirst("sub")?.Value 
                           ?? User.FindFirst(ClaimTypes.Name)?.Value;
+            
                 if (userId != null)
                 {
-                    var userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.UserFk == userId);
+                    userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.UserFk == userId);
+                    var userEmail = User.Identity.Name;
                     if (userInfo == null)
                     {
-                        userInfo = new UserInfo
+                        if (!string.IsNullOrEmpty(userEmail))
                         {
-                            UserFk = userId,
-                            FirstName = User.Identity.Name ?? "User",
-                            LastName = ""
-                        };
-                        _context.UserInfos.Add(userInfo);
+                            userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.Email == userEmail);
+                        }
+
+                        if (userInfo == null)
+                        {
+                            userInfo = new UserInfo
+                            {
+                                UserFk = userId,
+                                Email = userEmail ?? "User"
+                            };
+                            _context.UserInfos.Add(userInfo);
+                        }
+                        else
+                        {
+                            userInfo.UserFk = userId;
+                        }
                         await _context.SaveChangesAsync();
                     }
-
-                    var alreadyLinked = await _context.TripMembers.AnyAsync(tm => tm.TripFk == tripId && tm.IdFk == userInfo.IdPk);
-                    if (!alreadyLinked)
+                    else if (!string.IsNullOrEmpty(userEmail) && userInfo.Email != userEmail)
                     {
-                        var member = new TripMember
-                        {
-                            TripFk = tripId,
-                            IdFk = userInfo.IdPk
-                        };
-                        _context.TripMembers.Add(member);
+                        userInfo.Email = userEmail;
                         await _context.SaveChangesAsync();
                     }
                 }
@@ -1016,6 +1257,41 @@ namespace Traces.Controllers
                     sessionTrips.Add(tripId);
                     HttpContext.Session.SetString("SessionTrips", JsonSerializer.Serialize(sessionTrips));
                 }
+            }
+
+            if (userInfo != null)
+            {
+                var alreadyLinked = await _context.TripMembers.AnyAsync(tm => tm.TripFk == tripId && tm.IdFk == userInfo.IdPk);
+                if (!alreadyLinked)
+                {
+                    var member = new TripMember
+                    {
+                        TripFk = tripId,
+                        IdFk = userInfo.IdPk
+                    };
+                    _context.TripMembers.Add(member);
+                    await _context.SaveChangesAsync();
+                }
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> InviteTripMember(int tripId, string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return BadRequest("Email is required.");
+            }
+
+            try
+            {
+                await LinkUserToTripAsync(tripId, email);
+                return Json(new { success = true });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error inviting trip member");
+                return Json(new { success = false, message = "Could not invite user: " + ex.Message });
             }
         }
 
@@ -1054,6 +1330,190 @@ namespace Traces.Controllers
             }
 
             return Json(new { success = true });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddNoteToDay(int tripId, int tripDayId, string content)
+        {
+            if (string.IsNullOrWhiteSpace(content)) return BadRequest("Content is required.");
+            int maxOrder = await GetNextOrderIndexForDay(tripDayId);
+            var note = new Note
+            {
+                TripFk = tripId,
+                TripDayFk = tripDayId,
+                Content = content,
+                OrderIndex = maxOrder
+            };
+            _context.Notes.Add(note);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, id = note.NoIdPk });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddChecklistToDay(int tripId, int tripDayId, string title)
+        {
+            if (string.IsNullOrWhiteSpace(title)) return BadRequest("Title is required.");
+            int maxOrder = await GetNextOrderIndexForDay(tripDayId);
+            var checklist = new Checklist
+            {
+                TripFk = tripId,
+                TripDayFk = tripDayId,
+                Title = title,
+                OrderIndex = maxOrder
+            };
+            _context.Checklists.Add(checklist);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, id = checklist.ChIdPk });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddChecklistItem(int checklistId, string content)
+        {
+            if (string.IsNullOrWhiteSpace(content)) return BadRequest("Content is required.");
+            int maxOrder = await _context.ChecklistItems
+                .Where(ci => ci.ChecklistFk == checklistId)
+                .Select(ci => (int?)ci.OrderIndex)
+                .MaxAsync() ?? -1;
+
+            var item = new ChecklistItem
+            {
+                ChecklistFk = checklistId,
+                Content = content,
+                IsCompleted = false,
+                OrderIndex = maxOrder + 1
+            };
+            _context.ChecklistItems.Add(item);
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, id = item.ChItIdPk });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ToggleChecklistItem(int itemId)
+        {
+            var item = await _context.ChecklistItems.FindAsync(itemId);
+            if (item == null) return NotFound();
+            item.IsCompleted = !item.IsCompleted;
+            await _context.SaveChangesAsync();
+            return Json(new { success = true, isCompleted = item.IsCompleted });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeleteTimelineItem(int itemId, string type)
+        {
+            if (type == "Activity")
+            {
+                var act = await _context.TripActivities.FindAsync(itemId);
+                if (act != null)
+                {
+                    var routes = await _context.RouteToNexts
+                        .Where(r => r.FromActivityFk == itemId || r.ToActivityFk == itemId)
+                        .ToListAsync();
+                    _context.RouteToNexts.RemoveRange(routes);
+                    _context.TripActivities.Remove(act);
+                    await _context.SaveChangesAsync();
+                    await UpdateRoutesForDayAsync(act.TripDayFk);
+                }
+            }
+            else if (type == "Note")
+            {
+                var note = await _context.Notes.FindAsync(itemId);
+                if (note != null)
+                {
+                    _context.Notes.Remove(note);
+                    await _context.SaveChangesAsync();
+                }
+            }
+            else if (type == "Checklist")
+            {
+                var ch = await _context.Checklists.FindAsync(itemId);
+                if (ch != null)
+                {
+                    _context.Checklists.Remove(ch);
+                    await _context.SaveChangesAsync();
+                }
+            }
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> ReorderTimelineItems([FromBody] ReorderTimelineRequest request)
+        {
+            if (request == null || request.Items == null) return BadRequest("Invalid request.");
+            var affectedDayIds = new HashSet<int> { request.TripDayId };
+
+            for (int i = 0; i < request.Items.Count; i++)
+            {
+                var itemReq = request.Items[i];
+                if (itemReq.Type == "Activity")
+                {
+                    var entity = await _context.TripActivities.FindAsync(itemReq.Id);
+                    if (entity != null)
+                    {
+                        entity.OrderIndex = i;
+                        if (entity.TripDayFk != request.TripDayId)
+                        {
+                            affectedDayIds.Add(entity.TripDayFk);
+                            entity.TripDayFk = request.TripDayId;
+                        }
+                    }
+                }
+                else if (itemReq.Type == "Note")
+                {
+                    var entity = await _context.Notes.FindAsync(itemReq.Id);
+                    if (entity != null)
+                    {
+                        entity.OrderIndex = i;
+                        if (entity.TripDayFk != request.TripDayId)
+                        {
+                            if (entity.TripDayFk.HasValue) affectedDayIds.Add(entity.TripDayFk.Value);
+                            entity.TripDayFk = request.TripDayId;
+                        }
+                    }
+                }
+                else if (itemReq.Type == "Checklist")
+                {
+                    var entity = await _context.Checklists.FindAsync(itemReq.Id);
+                    if (entity != null)
+                    {
+                        entity.OrderIndex = i;
+                        if (entity.TripDayFk != request.TripDayId)
+                        {
+                            if (entity.TripDayFk.HasValue) affectedDayIds.Add(entity.TripDayFk.Value);
+                            entity.TripDayFk = request.TripDayId;
+                        }
+                    }
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            foreach (var dayId in affectedDayIds)
+            {
+                await UpdateRoutesForDayAsync(dayId);
+            }
+
+            return Json(new { success = true });
+        }
+
+        private async Task<int> GetNextOrderIndexForDay(int tripDayId)
+        {
+            int maxAct = await _context.TripActivities.Where(a => a.TripDayFk == tripDayId).Select(a => (int?)a.OrderIndex).MaxAsync() ?? -1;
+            int maxNote = await _context.Notes.Where(n => n.TripDayFk == tripDayId).Select(n => n.OrderIndex).MaxAsync() ?? -1;
+            int maxCh = await _context.Checklists.Where(c => c.TripDayFk == tripDayId).Select(c => (int?)c.OrderIndex).MaxAsync() ?? -1;
+            return Math.Max(maxAct, Math.Max(maxNote, maxCh)) + 1;
+        }
+
+        public class ReorderTimelineRequest
+        {
+            public int TripDayId { get; set; }
+            public List<ReorderTimelineItem> Items { get; set; }
+        }
+
+        public class ReorderTimelineItem
+        {
+            public int Id { get; set; }
+            public string Type { get; set; }
         }
 
         public class ReorderRequest

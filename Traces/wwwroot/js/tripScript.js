@@ -267,6 +267,22 @@ function exitBadgeEditMode() {
     document.getElementById("trip-badge-edit").classList.add("hidden");
 }
 
+function openInviteModal() {
+    const modal = document.getElementById("invite-member-modal");
+    if (modal) {
+        modal.classList.remove("hidden");
+    }
+}
+
+function closeInviteModal() {
+    const modal = document.getElementById("invite-member-modal");
+    if (modal) {
+        modal.classList.add("hidden");
+        const emailInput = document.getElementById("email");
+        if (emailInput) emailInput.value = "";
+    }
+}
+
 // Initialize badge autocomplete
 document.addEventListener("DOMContentLoaded", () => {
     const input = document.getElementById("editTripLocationInput");
@@ -406,6 +422,39 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 exitBadgeEditMode();
             }
+        });
+    }
+
+    const inviteForm = document.getElementById("invite-member-form");
+    if (inviteForm) {
+        inviteForm.addEventListener("submit", function (e) {
+            e.preventDefault();
+            const email = document.getElementById("email").value;
+            const tripId = window.TripConfig.tripId;
+            const inviteUrl = window.TripConfig.inviteMemberUrl;
+
+            if (!email) {
+                alert("Please enter a valid email address.");
+                return;
+            }
+
+            $.ajax({
+                url: inviteUrl,
+                type: "POST",
+                data: { tripId: tripId, email: email },
+                success: function (res) {
+                    if (res.success) {
+                        alert("Member invited successfully!");
+                        closeInviteModal();
+                        location.reload();
+                    } else {
+                        alert(res.message || "Failed to invite member.");
+                    }
+                },
+                error: function (xhr) {
+                    alert("Error: " + (xhr.responseText || "Could not complete the request."));
+                }
+            });
         });
     }
 });
@@ -622,27 +671,232 @@ async function initMap() {
     }
 }
 
-function showInlineForm(button) {
-    // Hide trigger button, show form
-    const container = button.closest('.inline-add-container');
-    button.classList.add('hidden');
-    const form = container.querySelector('.inline-add-form');
-    form.classList.remove('hidden');
-    // Focus the autocomplete input
-    const input = form.querySelector('.day-autocomplete');
-    if (input) input.focus();
+function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-function hideInlineForm(button) {
-    // Hide form, show trigger button
-    const container = button.closest('.inline-add-container');
-    const form = container.querySelector('.inline-add-form');
-    form.classList.add('hidden');
-    const trigger = container.querySelector('button');
-    trigger.classList.remove('hidden');
+function toggleActionBarForm(button, type) {
+    const container = button.closest('.day-action-bar-container');
+    container.querySelector('.form-place').classList.add('hidden');
+    container.querySelector('.form-note').classList.add('hidden');
+    container.querySelector('.form-checklist').classList.add('hidden');
+
+    if (type === 'place') {
+        container.querySelector('.form-place').classList.remove('hidden');
+        container.querySelector('.form-place input[name="PlaceName"]').focus();
+    } else if (type === 'note') {
+        container.querySelector('.form-note').classList.remove('hidden');
+        container.querySelector('.form-note textarea[name="NoteContent"]').focus();
+    } else if (type === 'checklist') {
+        container.querySelector('.form-checklist').classList.remove('hidden');
+        container.querySelector('.form-checklist input[name="ChecklistTitle"]').focus();
+    }
 }
 
-// Drag & Drop logic for activities reordering
+function cancelActionBarForm(button) {
+    const container = button.closest('.day-action-bar-container');
+    container.querySelector('.form-place').classList.add('hidden');
+    container.querySelector('.form-note').classList.add('hidden');
+    container.querySelector('.form-checklist').classList.add('hidden');
+}
+
+function submitNoteForm(button) {
+    const container = button.closest('.day-action-bar-container');
+    const noteArea = container.querySelector('textarea[name="NoteContent"]');
+    const content = noteArea.value.trim();
+    if (!content) return;
+
+    const tripId = container.dataset.tripId;
+    const tripDayId = container.dataset.dayId;
+
+    $.ajax({
+        url: '/Trip/AddNoteToDay',
+        type: 'POST',
+        data: { tripId: tripId, tripDayId: tripDayId, content: content },
+        success: function(res) {
+            if (res.success) {
+                const targetTimeline = container.previousElementSibling;
+                if (targetTimeline && targetTimeline.classList.contains('activities-container')) {
+                    const newCard = `
+                        <div class="timeline-card activity-card bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start cursor-grab active:cursor-grabbing" draggable="true" data-timeline-id="${res.id}" data-timeline-type="Note">
+                            <div class="flex items-start space-x-3 flex-1 pr-4">
+                                <div class="mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
+                                    </svg>
+                                </div>
+                                <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="text-sm text-slate-650 leading-relaxed pt-0.5 whitespace-pre-line">
+                                    ${escapeHtml(content)}
+                                </div>
+                            </div>
+                            <button type="button" onclick="deleteTimelineItem(${res.id}, 'Note')" class="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100" title="Delete Note">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                    targetTimeline.insertAdjacentHTML('beforeend', newCard);
+                }
+                noteArea.value = '';
+                cancelActionBarForm(button);
+            }
+        },
+        error: function() {
+            alert('Failed to add note.');
+        }
+    });
+}
+
+function submitChecklistForm(button) {
+    const container = button.closest('.day-action-bar-container');
+    const input = container.querySelector('input[name="ChecklistTitle"]');
+    const title = input.value.trim();
+    if (!title) return;
+
+    const tripId = container.dataset.tripId;
+    const tripDayId = container.dataset.dayId;
+
+    $.ajax({
+        url: '/Trip/AddChecklistToDay',
+        type: 'POST',
+        data: { tripId: tripId, tripDayId: tripDayId, title: title },
+        success: function(res) {
+            if (res.success) {
+                const targetTimeline = container.previousElementSibling;
+                if (targetTimeline && targetTimeline.classList.contains('activities-container')) {
+                    const newCard = `
+                        <div class="timeline-card activity-card bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start cursor-grab active:cursor-grabbing" draggable="true" data-timeline-id="${res.id}" data-timeline-type="Checklist">
+                            <div class="flex items-start space-x-3 flex-1 pr-4">
+                                <div class="mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
+                                    </svg>
+                                </div>
+                                <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                    <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                    </svg>
+                                </div>
+                                <div class="flex-1 pt-0.5">
+                                    <h4 class="font-bold text-slate-800 text-sm mb-3">${escapeHtml(title)}</h4>
+                                    <ul class="space-y-2.5 mb-3 checklist-items-list" data-checklist-id="${res.id}">
+                                    </ul>
+                                    <div class="flex items-center space-x-2 mt-2 pt-1.5 border-t border-slate-200/50">
+                                        <input type="text" placeholder="Add some items..." class="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs w-full max-w-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" onkeydown="handleAddChecklistItemKeyDown(event, ${res.id})" />
+                                        <button type="button" onclick="submitNewChecklistItem(this, ${res.id})" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 px-2 py-1">Add</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" onclick="deleteTimelineItem(${res.id}, 'Checklist')" class="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100" title="Delete Checklist">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                    targetTimeline.insertAdjacentHTML('beforeend', newCard);
+                }
+                input.value = '';
+                cancelActionBarForm(button);
+            }
+        },
+        error: function() {
+            alert('Failed to add checklist.');
+        }
+    });
+}
+
+function submitNewChecklistItem(button, checklistId) {
+    const container = button.closest('.timeline-card');
+    const input = container.querySelector('input[placeholder="Add some items..."]');
+    const content = input.value.trim();
+    if (!content) return;
+
+    $.ajax({
+        url: '/Trip/AddChecklistItem',
+        type: 'POST',
+        data: { checklistId: checklistId, content: content },
+        success: function(res) {
+            if (res.success) {
+                const list = container.querySelector('.checklist-items-list');
+                if (list) {
+                    const newItem = `
+                        <li class="flex items-center text-xs text-slate-600" data-item-id="${res.id}">
+                            <input type="checkbox" onchange="toggleChecklistItem(this)" class="mr-2.5 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300" />
+                            <span class="text-slate-700 font-medium">${escapeHtml(content)}</span>
+                        </li>
+                    `;
+                    list.insertAdjacentHTML('beforeend', newItem);
+                }
+                input.value = '';
+            }
+        },
+        error: function() {
+            alert('Failed to add checklist item.');
+        }
+    });
+}
+
+function handleAddChecklistItemKeyDown(event, checklistId) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        const input = event.target;
+        const button = input.nextElementSibling;
+        submitNewChecklistItem(button, checklistId);
+    }
+}
+
+function toggleChecklistItem(checkbox) {
+    const li = checkbox.closest('li');
+    const itemId = li.dataset.itemId;
+    const label = checkbox.nextElementSibling;
+
+    $.ajax({
+        url: '/Trip/ToggleChecklistItem',
+        type: 'POST',
+        data: { itemId: itemId },
+        success: function(res) {
+            if (res.success) {
+                if (res.isCompleted) {
+                    label.classList.add('line-through', 'text-slate-400');
+                    label.classList.remove('text-slate-700', 'font-medium');
+                } else {
+                    label.classList.remove('line-through', 'text-slate-400');
+                    label.classList.add('text-slate-700', 'font-medium');
+                }
+            }
+        },
+        error: function() {
+            checkbox.checked = !checkbox.checked;
+            alert('Failed to update task.');
+        }
+    });
+}
+
+function deleteTimelineItem(itemId, type) {
+    if (!confirm('Are you sure you want to delete this ' + type.toLowerCase() + '?')) return;
+    $.ajax({
+        url: '/Trip/DeleteTimelineItem',
+        type: 'POST',
+        data: { itemId: itemId, type: type },
+        success: function() {
+            const card = document.querySelector(`.timeline-card[data-timeline-id="${itemId}"][data-timeline-type="${type}"]`);
+            if (card) {
+                card.remove();
+            }
+        },
+        error: function() {
+            alert('Failed to delete item.');
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     let draggedCard = null;
     let sourceDayId = null;
@@ -652,7 +906,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const containers = document.querySelectorAll('.activities-container');
 
         cards.forEach(card => {
-            // Ensure events are attached only once
             if (card.dataset.dragInitialized) return;
             card.dataset.dragInitialized = 'true';
 
@@ -661,7 +914,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const container = card.closest('.activities-container');
                 sourceDayId = container ? container.dataset.dayId : null;
                 card.classList.add('dragging');
-                e.dataTransfer.setData('text/plain', card.dataset.activityId);
+                e.dataTransfer.setData('text/plain', card.dataset.timelineId);
                 e.dataTransfer.effectAllowed = 'move';
             });
 
@@ -699,52 +952,71 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.classList.remove('drag-over');
 
                 const targetDayId = container.dataset.dayId;
-                const activityId = e.dataTransfer.getData('text/plain');
 
-                // Extract all activity IDs in target container in their new order
-                const activityIds = Array.from(container.querySelectorAll('.activity-card'))
-                    .map(c => parseInt(c.dataset.activityId));
+                // Record activity sequence before drop
+                const beforeActivitySequence = Array.from(document.querySelectorAll('.timeline-card[data-timeline-type="Activity"]'))
+                    .map(c => c.dataset.timelineId + '-' + (c.closest('.activities-container')?.dataset.dayId || ''))
+                    .join(',');
 
-                // Send the update to the server
+                const items = Array.from(container.querySelectorAll('.timeline-card'))
+                    .map(c => ({
+                        id: parseInt(c.dataset.timelineId),
+                        type: c.dataset.timelineType
+                    }))
+                    .filter(i => !isNaN(i.id));
+
                 try {
-                    const response = await fetch('/Trip/ReorderActivities', {
+                    const response = await fetch('/Trip/ReorderTimelineItems', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({
                             tripDayId: parseInt(targetDayId),
-                            activityIds: activityIds
+                            items: items
                         })
                     });
 
                     if (response.ok) {
-                        console.log('Reordered successfully');
-                        // If it was moved between days, also trigger reordering update on the source container to normalize it.
+                        console.log('Reordered timeline successfully');
                         if (sourceDayId && sourceDayId !== targetDayId) {
                             const sourceContainer = document.querySelector(`.activities-container[data-day-id="${sourceDayId}"]`);
                             if (sourceContainer) {
-                                const sourceActivityIds = Array.from(sourceContainer.querySelectorAll('.activity-card'))
-                                    .map(c => parseInt(c.dataset.activityId));
+                                const sourceItems = Array.from(sourceContainer.querySelectorAll('.timeline-card'))
+                                    .map(c => ({
+                                        id: parseInt(c.dataset.timelineId),
+                                        type: c.dataset.timelineType
+                                    }))
+                                    .filter(i => !isNaN(i.id));
 
-                                await fetch('/Trip/ReorderActivities', {
+                                await fetch('/Trip/ReorderTimelineItems', {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json'
                                     },
                                     body: JSON.stringify({
                                         tripDayId: parseInt(sourceDayId),
-                                        activityIds: sourceActivityIds
+                                        items: sourceItems
                                     })
                                 });
                             }
                         }
-                        location.reload();
+
+                        // Check activity sequence after drop to decide on reload
+                        const afterActivitySequence = Array.from(document.querySelectorAll('.timeline-card[data-timeline-type="Activity"]'))
+                            .map(c => c.dataset.timelineId + '-' + (c.closest('.activities-container')?.dataset.dayId || ''))
+                            .join(',');
+
+                        if (beforeActivitySequence !== afterActivitySequence) {
+                            location.reload(); // Reload only if activities reordered/moved (updates map/routes)
+                        } else {
+                            console.log('Only notes/checklists reordered. Skipping page reload.');
+                        }
                     } else {
-                        console.error('Failed to reorder activities');
+                        console.error('Failed to reorder timeline');
                     }
                 } catch (err) {
-                    console.error('Error reordering activities', err);
+                    console.error('Error reordering timeline', err);
                 }
             });
         });
@@ -766,7 +1038,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initDragAndDrop();
 
-    // Re-initialize drag and drop when new elements are added dynamically
     const observer = new MutationObserver(initDragAndDrop);
     observer.observe(document.body, { childList: true, subtree: true });
 });

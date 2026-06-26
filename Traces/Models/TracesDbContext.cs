@@ -90,6 +90,10 @@ public partial class TracesDbContext : DbContext
             entity.Property(e => e.TripDayFk).HasColumnName("TripDayFK");
             entity.Property(e => e.TripFk).HasColumnName("TripFK");
 
+            entity.HasOne(d => d.TripDayFkNavigation).WithMany(p => p.Notes)
+                .HasForeignKey(d => d.TripDayFk)
+                .HasConstraintName("FK_Notes_TripDay");
+
             entity.HasOne(d => d.TripFkNavigation).WithMany(p => p.Notes)
                 .HasForeignKey(d => d.TripFk)
                 .HasConstraintName("FK_Notes_TripActivities");
@@ -258,8 +262,7 @@ public partial class TracesDbContext : DbContext
 
             entity.ToTable("UserInfo");
 
-            entity.Property(e => e.FirstName).HasMaxLength(50);
-            entity.Property(e => e.LastName).HasMaxLength(50);
+            entity.Property(e => e.Email).HasMaxLength(200);
             entity.Property(e => e.UserFk)
                 .IsRequired()
                 .HasMaxLength(450);

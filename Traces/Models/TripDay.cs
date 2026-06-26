@@ -17,6 +17,8 @@ public partial class TripDay
 
     public virtual ICollection<Checklist> Checklists { get; set; } = new List<Checklist>();
 
+    public virtual ICollection<Note> Notes { get; set; } = new List<Note>();
+
     public virtual ICollection<TripActivity> TripActivities { get; set; } = new List<TripActivity>();
 
     public virtual Trip TripFkNavigation { get; set; }
