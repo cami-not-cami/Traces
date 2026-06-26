@@ -36,13 +36,26 @@ namespace Traces.Services
             }
 
             string url = "https://routes.googleapis.com/directions/v2:computeRoutes";
-            var payload = new
+            object payload;
+            if (travelMode == "DRIVE" || travelMode == "TWO_WHEELER")
             {
-                origin = new { placeId = originId },
-                destination = new { placeId = destinationId },
-                travelMode = travelMode,
-                routingPreference = "TRAFFIC_UNAWARE"
-            };
+                payload = new
+                {
+                    origin = new { placeId = originId },
+                    destination = new { placeId = destinationId },
+                    travelMode = travelMode,
+                    routingPreference = "TRAFFIC_UNAWARE"
+                };
+            }
+            else
+            {
+                payload = new
+                {
+                    origin = new { placeId = originId },
+                    destination = new { placeId = destinationId },
+                    travelMode = travelMode
+                };
+            }
 
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Headers.Add("X-Goog-Api-Key", _googleApiKey);

@@ -23,6 +23,7 @@ namespace Traces
             
             builder.Services.AddHttpClient<GoogleMapsServices>();
             builder.Services.AddHttpClient<GooglePlacesService>();
+            builder.Services.AddScoped<ITripService, TripService>();
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddSession(options => {
                 options.IdleTimeout = TimeSpan.FromMinutes(20);

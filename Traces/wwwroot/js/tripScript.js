@@ -387,7 +387,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const locationText = document.getElementById("editTripLocationInput").value;
 
             if (!locationText.trim()) {
-                alert("Please select a location.");
+                showAlertModal("Validation", "Please select a location.");
                 return;
             }
 
@@ -417,7 +417,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         location.reload();
                     },
                     error: function (xhr, textStatus, errorThrown) {
-                        alert('Error updating trip: ' + xhr.status);
+                        showAlertModal('Error', 'Error updating trip: ' + xhr.status);
                     }
                 });
                 exitBadgeEditMode();
@@ -434,7 +434,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const inviteUrl = window.TripConfig.inviteMemberUrl;
 
             if (!email) {
-                alert("Please enter a valid email address.");
+                showAlertModal("Validation", "Please enter a valid email address.");
                 return;
             }
 
@@ -444,15 +444,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 data: { tripId: tripId, email: email },
                 success: function (res) {
                     if (res.success) {
-                        alert("Member invited successfully!");
+                        showAlertModal("Success", "Member invited successfully!");
                         closeInviteModal();
                         location.reload();
                     } else {
-                        alert(res.message || "Failed to invite member.");
+                        showAlertModal("Error", res.message || "Failed to invite member.");
                     }
                 },
                 error: function (xhr) {
-                    alert("Error: " + (xhr.responseText || "Could not complete the request."));
+                    showAlertModal("Error", "Error: " + (xhr.responseText || "Could not complete the request."));
                 }
             });
         });
@@ -469,7 +469,7 @@ function saveBudget(tripId) {
             console.log('Budget updated successfully:', xhr.status);
         },
         error: function (xhr, textStatus, errorThrown) {
-            alert('Error saving budget: ' + xhr.status);
+            showAlertModal('Error', 'Error saving budget: ' + xhr.status);
         }
     });
 }
@@ -496,6 +496,8 @@ async function initMap() {
 
         marker.addListener("click", () => {
             infowindow.setContent(`<div class="p-2 font-sans font-semibold text-slate-800 text-xs">${p.name}</div>`);
+            map.setZoom(20);
+            map.setCenter(marker.position);
             infowindow.open(map, marker);
         });
 
@@ -513,11 +515,11 @@ async function initMap() {
             if (route.polyline) {
                 const path = google.maps.geometry.encoding.decodePath(route.polyline);
 
-                let strokeColor = "#6366F1"; // Default indigo-500 for DRIVE
+                let strokeColor = "#0b03a6"; //blue for DRIVE
                 let icons = null;
 
                 if (route.travelMode === "WALK") {
-                    strokeColor = "#10B981"; // Emerald-500 for WALK
+                    strokeColor = "#f707d3"; // pink for WALK
                     // Render walking routes as dashed lines
                     icons = [{
                         icon: {
@@ -528,10 +530,6 @@ async function initMap() {
                         offset: '0',
                         repeat: '10px'
                     }];
-                } else if (route.travelMode === "BICYCLE") {
-                    strokeColor = "#3B82F6"; // Blue-500 for BICYCLE
-                } else if (route.travelMode === "TRANSIT") {
-                    strokeColor = "#F59E0B"; // Amber-500 for TRANSIT
                 }
 
                 const polylineOptions = {
@@ -748,7 +746,7 @@ function submitNoteForm(button) {
             }
         },
         error: function() {
-            alert('Failed to add note.');
+            showAlertModal('Error', 'Failed to add note.');
         }
     });
 }
@@ -807,7 +805,7 @@ function submitChecklistForm(button) {
             }
         },
         error: function() {
-            alert('Failed to add checklist.');
+            showAlertModal('Error', 'Failed to add checklist.');
         }
     });
 }
@@ -838,7 +836,7 @@ function submitNewChecklistItem(button, checklistId) {
             }
         },
         error: function() {
-            alert('Failed to add checklist item.');
+            showAlertModal('Error', 'Failed to add checklist item.');
         }
     });
 }
@@ -874,25 +872,32 @@ function toggleChecklistItem(checkbox) {
         },
         error: function() {
             checkbox.checked = !checkbox.checked;
-            alert('Failed to update task.');
+            showAlertModal('Error', 'Failed to update task.');
         }
     });
 }
 
 function deleteTimelineItem(itemId, type) {
-    if (!confirm('Are you sure you want to delete this ' + type.toLowerCase() + '?')) return;
-    $.ajax({
-        url: '/Trip/DeleteTimelineItem',
-        type: 'POST',
-        data: { itemId: itemId, type: type },
-        success: function() {
-            const card = document.querySelector(`.timeline-card[data-timeline-id="${itemId}"][data-timeline-type="${type}"]`);
-            if (card) {
-                card.remove();
-            }
-        },
-        error: function() {
-            alert('Failed to delete item.');
+    showConfirmModal({
+        title: 'Delete ' + type,
+        message: 'Are you sure you want to delete this ' + type.toLowerCase() + '?',
+        danger: true,
+        confirmText: 'Delete',
+        onConfirm: function() {
+            $.ajax({
+                url: '/Trip/DeleteTimelineItem',
+                type: 'POST',
+                data: { itemId: itemId, type: type },
+                success: function() {
+                    const card = document.querySelector(`.timeline-card[data-timeline-id="${itemId}"][data-timeline-type="${type}"]`);
+                    if (card) {
+                        card.remove();
+                    }
+                },
+                error: function() {
+                    showAlertModal('Error', 'Failed to delete item.');
+                }
+            });
         }
     });
 }
@@ -1041,3 +1046,150 @@ document.addEventListener('DOMContentLoaded', () => {
     const observer = new MutationObserver(initDragAndDrop);
     observer.observe(document.body, { childList: true, subtree: true });
 });
+
+// Reusable Confirmation Modal Logic
+let confirmCallback = null;
+
+function showConfirmModal(options) {
+    const modal = document.getElementById('confirmation-modal');
+    if (!modal) {
+        if (options.onConfirm) {
+            const res = confirm(options.message || 'Are you sure?');
+            if (res) options.onConfirm();
+        }
+        return;
+    }
+
+    const titleEl = document.getElementById('confirm-modal-title');
+    const msgEl = document.getElementById('confirm-modal-message');
+    const confirmBtn = document.getElementById('confirm-modal-confirm');
+    const cancelBtn = document.getElementById('confirm-modal-cancel');
+    const iconContainer = document.getElementById('confirm-modal-icon');
+
+    if (titleEl) titleEl.textContent = options.title || 'Are you sure?';
+    if (msgEl) msgEl.textContent = options.message || 'This action cannot be undone.';
+    
+    if (confirmBtn) {
+        confirmBtn.className = "px-4 py-2 text-white rounded-xl text-sm font-semibold shadow-sm transition-all " + 
+            (options.danger ? "bg-rose-600 hover:bg-rose-700 shadow-rose-500/10" : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/10");
+        confirmBtn.textContent = options.confirmText || 'Confirm';
+    }
+
+    if (cancelBtn) {
+        if (options.hideCancel) {
+            cancelBtn.classList.add('hidden');
+        } else {
+            cancelBtn.classList.remove('hidden');
+            cancelBtn.textContent = options.cancelText || 'Cancel';
+        }
+    }
+
+    if (iconContainer) {
+        if (options.danger) {
+            iconContainer.className = "w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 shrink-0";
+            iconContainer.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+        } else {
+            iconContainer.className = "w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0";
+            iconContainer.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+        }
+    }
+
+    confirmCallback = options.onConfirm;
+
+    modal.classList.remove('hidden');
+
+    const handleConfirm = () => {
+        if (confirmCallback) confirmCallback();
+        closeConfirmModal();
+    };
+
+    const handleCancel = () => {
+        closeConfirmModal();
+    };
+
+    if (confirmBtn) confirmBtn.onclick = handleConfirm;
+    if (cancelBtn) cancelBtn.onclick = handleCancel;
+}
+
+function closeConfirmModal() {
+    const modal = document.getElementById('confirmation-modal');
+    if (modal) modal.classList.add('hidden');
+    confirmCallback = null;
+}
+
+function showAlertModal(title, message) {
+    showConfirmModal({
+        title: title,
+        message: message,
+        confirmText: 'OK',
+        hideCancel: true,
+        onConfirm: function() {}
+    });
+}
+
+function confirmDeleteTrip(tripId) {
+    showConfirmModal({
+        title: 'Delete Trip',
+        message: 'Are you sure you want to permanently delete this trip? All plans, checklists, notes, and members will be lost.',
+        danger: true,
+        confirmText: 'Delete',
+        onConfirm: function() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = window.TripConfig.deleteTripUrl;
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'tripId';
+            input.value = tripId;
+            form.appendChild(input);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
+
+function confirmRemoveMember(tripId, memberId, email) {
+    showConfirmModal({
+        title: 'Remove Collaborator',
+        message: `Are you sure you want to remove ${email} from this trip? They will lose all access.`,
+        danger: true,
+        confirmText: 'Remove',
+        onConfirm: function() {
+            $.ajax({
+                url: window.TripConfig.removeMemberUrl,
+                type: 'POST',
+                data: { tripId: tripId, memberId: memberId },
+                success: function(res) {
+                    if (res.success) {
+                        location.reload();
+                    } else {
+                        showAlertModal('Error', res.message || 'Failed to remove member.');
+                    }
+                },
+                error: function(xhr) {
+                    showAlertModal('Error', 'Error: ' + (xhr.responseText || 'Could not complete request.'));
+                }
+            });
+        }
+    });
+}
+
+function changeTravelMode(fromActivityId, toActivityId, travelMode) {
+    $.ajax({
+        url: window.TripConfig.updateTravelModeUrl,
+        type: 'POST',
+        data: { fromActivityId: fromActivityId, toActivityId: toActivityId, travelMode: travelMode },
+        success: function (res) {
+            if (res.success) {
+                location.reload();
+            } else {
+                showAlertModal('Error', res.message || 'Failed to update travel mode.');
+            }
+        },
+        error: function (xhr) {
+            showAlertModal('Error', 'Error: ' + (xhr.responseText || 'Could not complete request.'));
+        }
+    });
+}
