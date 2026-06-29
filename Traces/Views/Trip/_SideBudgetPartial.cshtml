@@ -10,14 +10,7 @@
     <ul class="mt-1.5 space-y-0.5 sidebar-sublist">
         <li>
             <a href="#budget" class="block mx-3 pl-10 pr-4 py-1.5 text-sm text-slate-550 hover:text-indigo-600 hover:bg-slate-200/55 rounded-xl transition-all">
-                @if (Model.HasValue)
-                {
-                    <span class="font-semibold text-slate-700">@Model.Value.ToString("N2") €</span>
-                }
-                else
-                {
                     <span class="sidebar-text font-medium">View budget</span>
-                }
             </a>
         </li>
     </ul>

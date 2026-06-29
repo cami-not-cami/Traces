@@ -110,18 +110,20 @@
                 @if (Model.TripId > 0 && !Model.ViewOnly)
                 {
                     <button onclick="confirmDeleteTrip(@Model.TripId)" class="bg-rose-600 hover:bg-rose-700 hover:shadow-lg hover:shadow-rose-500/20 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center transition-all">
-                        <svg class="w-4 h-4 sm:mr-1.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <svg class="w-3 h-3 sm:mr-1.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
-                        <span class="hidden sm:inline">Delete Trip</span>
+                        <span class="hidden sm:inline"> Delete Trip</span>
                     </button>
                 }
 
                 <button class="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/20 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center transition-all">
-                    <svg class="w-4 h-4 sm:mr-1.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.684 10.742l4.73 2.837m0-7.158l-4.73 2.837M19 12a3 3 0 11-6 0 3 3 0 016 0zm-12 6a3 3 0 11-6 0 3 3 0 016 0zm0-12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <svg fill="#000000" width="15px" height="15px" viewBox="0 0 36 36" version="1.1" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+                        <title>share-solid</title>
+                        <path class="clr-i-solid clr-i-solid-path-1" d="M27.53,24a5,5,0,0,0-3.6,1.55L11.74,19.45a4.47,4.47,0,0,0,0-2.8l12.21-6.21a5.12,5.12,0,1,0-1.07-1.7L10.79,14.89a5,5,0,1,0,0,6.33l12.06,6.07A4.93,4.93,0,0,0,22.54,29a5,5,0,1,0,5-5Z"></path>
+                        <rect x="0" y="0" width="36" height="36" fill-opacity="0" />
                     </svg>
-                    <span class="hidden sm:inline">Share</span>
+                    <span class="hidden sm:inline"> Share</span>
                 </button>
             </div>
         </header>
