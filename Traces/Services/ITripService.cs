@@ -56,6 +56,8 @@ namespace Traces.Services
         Task DeleteTripAsync(int tripId);
         Task RemoveTripMemberAsync(int tripId, int memberId);
         Task UpdateRouteTravelModeAsync(int fromActivityId, int toActivityId, string travelMode);
+        Task GeneratePdfAsync();
+        Task DownloadPdfAsync();
     }
 
     public class ReorderTimelineItemDto
