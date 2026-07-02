@@ -12,12 +12,14 @@ namespace Traces.Controllers
         private readonly TracesDbContext _context;
         private readonly ITripService _tripService;
         private readonly ILogger<TripController> _logger;
+        private readonly PdfService _pdfService;
 
-        public TripController(TracesDbContext context, ITripService tripService, ILogger<TripController> logger)
+        public TripController(TracesDbContext context, ITripService tripService, ILogger<TripController> logger, PdfService pdfService)
         {
             _context = context;
             _tripService = tripService;
             _logger = logger;
+            _pdfService = pdfService;
         }
 
         // GET: TripController
@@ -269,6 +271,29 @@ namespace Traces.Controllers
             }
 
             return View(vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ExportPdf(int tripId)
+        {
+            var tripVm = await _tripService.GetTripViewModelAsync(tripId);
+            if (tripVm == null)
+            {
+                return NotFound("Trip not found");
+            }
+
+            try
+            {
+                var pdfBytes = _pdfService.GenerateTripPdf(tripVm);
+                var safeTitle = string.Join("_", tripVm.Title.Split(System.IO.Path.GetInvalidFileNameChars()));
+                var fileName = $"Trip_{safeTitle}.pdf";
+                return File(pdfBytes, "application/pdf", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error exporting trip to PDF");
+                return StatusCode(500, "Error generating PDF: " + ex.Message);
+            }
         }
 
         [HttpPost]

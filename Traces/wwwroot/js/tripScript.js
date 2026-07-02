@@ -890,8 +890,25 @@ function deleteTimelineItem(itemId, type) {
                 data: { itemId: itemId, type: type },
                 success: function() {
                     const card = document.querySelector(`.timeline-card[data-timeline-id="${itemId}"][data-timeline-type="${type}"]`);
+                    let googlePlaceId = null;
                     if (card) {
+                        googlePlaceId = card.dataset.googlePlaceId;
                         card.remove();
+                    }
+                    if (type === 'Activity' && googlePlaceId) {
+                        const badge = document.querySelector(`#unscheduled-places-container [data-place-id="${googlePlaceId}"]`);
+                        if (badge) {
+                            badge.remove();
+                        }
+                        const container = document.getElementById('unscheduled-places-container');
+                        const msg = document.getElementById('no-unscheduled-places-msg');
+                        if (container && msg) {
+                            const badgesLeft = container.querySelectorAll('[data-place-id]');
+                            if (badgesLeft.length === 0) {
+                                container.classList.add('hidden');
+                                msg.classList.remove('hidden');
+                            }
+                        }
                     }
                 },
                 error: function() {

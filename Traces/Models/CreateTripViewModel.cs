@@ -37,9 +37,11 @@ namespace Traces.Models
         public int TripDayId { get; set; }
         public int DayNumber { get; set; }
         public DateOnly? Date { get; set; }
-        public string DayLabel => Date.HasValue
-            ? Date.Value.ToString("ddd d/M")
-            : $"Day {DayNumber}";
+        public string DayLabel => DayNumber == 0
+            ? "Unscheduled"
+            : Date.HasValue
+                ? Date.Value.ToString("ddd d/M")
+                : $"Day {DayNumber}";
 
         public List<TripActivityViewModel> Activities { get; set; } = new();
         public List<TimelineItemViewModel> TimelineItems { get; set; } = new();

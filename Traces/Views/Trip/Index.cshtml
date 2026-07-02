@@ -117,14 +117,15 @@
                     </button>
                 }
 
-                <button class="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/20 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center transition-all">
-                    <svg fill="#000000" width="15px" height="15px" viewBox="0 0 36 36" version="1.1" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-                        <title>share-solid</title>
-                        <path class="clr-i-solid clr-i-solid-path-1" d="M27.53,24a5,5,0,0,0-3.6,1.55L11.74,19.45a4.47,4.47,0,0,0,0-2.8l12.21-6.21a5.12,5.12,0,1,0-1.07-1.7L10.79,14.89a5,5,0,1,0,0,6.33l12.06,6.07A4.93,4.93,0,0,0,22.54,29a5,5,0,1,0,5-5Z"></path>
-                        <rect x="0" y="0" width="36" height="36" fill-opacity="0" />
-                    </svg>
-                    <span class="hidden sm:inline"> Share</span>
-                </button>
+                @if (Model.TripId > 0)
+                {
+                    <a href="@Url.Action("ExportPdf", "Trip", new { tripId = Model.TripId })" class="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/20 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all no-underline">
+                        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        <span class="hidden sm:inline">Download PDF</span>
+                    </a>
+                }
             </div>
         </header>
 
@@ -275,21 +276,18 @@
                         <svg class="w-5.5 h-5.5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         Places to Visit (Unscheduled)
                     </h3>
-                    @if (Model.PlacesToVisit != null && Model.PlacesToVisit.Count > 0)
-                    {
-                        <div class="flex flex-wrap gap-3 mb-4">
-                            @foreach (var place in Model.PlacesToVisit)
+                    <div id="unscheduled-places-container" class="flex flex-wrap gap-3 mb-4 @(Model.PlacesToVisit != null && Model.PlacesToVisit.Count > 0 ? "" : "hidden")">
+                        @if (Model.PlacesToVisit != null)
+                        {
+                            foreach (var place in Model.PlacesToVisit)
                             {
-                                <div class="bg-indigo-50/50 hover:bg-indigo-55 border border-indigo-100 rounded-xl px-4 py-2.5 text-sm font-semibold text-indigo-700 flex items-center transition-all cursor-pointer hover:border-indigo-300" onclick="showPlaceDetailsPopup('@place.GooglePlaceId')">
+                                <div data-place-id="@place.GooglePlaceId" class="bg-indigo-50/50 hover:bg-indigo-55 border border-indigo-100 rounded-xl px-4 py-2.5 text-sm font-semibold text-indigo-700 flex items-center transition-all cursor-pointer hover:border-indigo-300" onclick="showPlaceDetailsPopup('@place.GooglePlaceId')">
                                     <span class="mr-2">📍</span> @place.Name
                                 </div>
                             }
-                        </div>
-                    }
-                    else
-                    {
-                        <p class="text-xs text-slate-400 mb-4 italic">No unscheduled places added yet.</p>
-                    }
+                        }
+                    </div>
+                    <p id="no-unscheduled-places-msg" class="text-xs text-slate-400 mb-4 italic @(Model.PlacesToVisit != null && Model.PlacesToVisit.Count > 0 ? "hidden" : "")">No unscheduled places added yet.</p>
 
                     @if (!Model.ViewOnly)
                     {
@@ -343,7 +341,7 @@
                                             if (item.Type == "Activity" && item.Activity != null)
                                             {
                                                 var activity = item.Activity;
-                                                <div class="timeline-card activity-card bg-white border border-slate-150 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start @(Model.ViewOnly ? "" : "cursor-grab active:cursor-grabbing")" draggable="@(Model.ViewOnly ? "false" : "true")" data-timeline-id="@item.Id" data-timeline-type="Activity">
+                                                <div class="timeline-card activity-card bg-white border border-slate-150 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start @(Model.ViewOnly ? "" : "cursor-grab active:cursor-grabbing")" draggable="@(Model.ViewOnly ? "false" : "true")" data-timeline-id="@item.Id" data-timeline-type="Activity" data-google-place-id="@activity.Place?.GooglePlaceId">
                                                     <!-- Drag handle -->
                                                     @if (!Model.ViewOnly)
                                                     {

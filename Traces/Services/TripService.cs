@@ -147,14 +147,20 @@ namespace Traces.Services
             var allNotes = trip.Notes.ToList();
 
             var placesToVisit = dayViewModels
+                .Where(d => d.DayNumber == 0)
                 .SelectMany(d => d.Activities)
                 .Select(a => a.Place)
                 .GroupBy(p => p.GooglePlaceId)
                 .Select(g => g.First())
                 .ToList();
 
-            var latitude = placesToVisit.FirstOrDefault()?.Latitude;
-            var longitude = placesToVisit.FirstOrDefault()?.Longitude;
+            var allPlaces = dayViewModels
+                .SelectMany(d => d.Activities)
+                .Select(a => a.Place)
+                .ToList();
+
+            var latitude = allPlaces.FirstOrDefault()?.Latitude;
+            var longitude = allPlaces.FirstOrDefault()?.Longitude;
 
             return new CreateTripViewModel
             {
