@@ -13,5 +13,7 @@ public partial class UserInfo
 
     public string Email { get; set; }
 
+    public virtual ICollection<Expense> Expenses { get; set; } = new List<Expense>();
+
     public virtual ICollection<TripMember> TripMembers { get; set; } = new List<TripMember>();
 }

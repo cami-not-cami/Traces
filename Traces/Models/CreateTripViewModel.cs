@@ -21,6 +21,7 @@ namespace Traces.Models
         public List<Note> Notes { get; set; } = new();
         public List<Checklist> Checklists { get; set; } = new();
         public List<PlaceViewModel> PlacesToVisit { get; set; } = new();
+        public List<ExpenseViewModel> Expenses { get; set; } = new();
     }
 
 
@@ -84,6 +85,29 @@ namespace Traces.Models
         public string City { get; set; }
         public string? CoverPhoto { get; set; }
         public string? CountryName { get; set; }
+    }
+
+    public class ExpenseViewModel
+    {
+        public int ExpenseId { get; set; }
+        public string Title { get; set; }
+        public decimal Amount { get; set; }
+        public string Category { get; set; }
+        public DateTime? Date { get; set; }
+        public int PaidByUserInfoFk { get; set; }
+        public string PaidByEmail { get; set; }
+        public int? TripActivityFk { get; set; }
+        public string? TripActivityName { get; set; }
+
+        public List<ExpenseSplitViewModel> Splits { get; set; } = new();
+    }
+
+    public class ExpenseSplitViewModel
+    {
+        public int ExpenseSplitId { get; set; }
+        public int UserInfoFk { get; set; }
+        public string UserEmail { get; set; }
+        public decimal Amount { get; set; }
     }
 }
 

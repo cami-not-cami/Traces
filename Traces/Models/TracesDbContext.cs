@@ -17,19 +17,15 @@ public partial class TracesDbContext : DbContext
 
     public virtual DbSet<ChecklistItem> ChecklistItems { get; set; }
 
+    public virtual DbSet<Expense> Expenses { get; set; }
+
+    public virtual DbSet<ExpenseSplit> ExpenseSplits { get; set; }
+
     public virtual DbSet<Note> Notes { get; set; }
 
     public virtual DbSet<Place> Places { get; set; }
 
-    public virtual DbSet<PlaceCategory> PlaceCategories { get; set; }
-
-    public virtual DbSet<PlaceDetail> PlaceDetails { get; set; }
-
-    public virtual DbSet<PlaceHour> PlaceHours { get; set; }
-
     public virtual DbSet<PlacePhoto> PlacePhotos { get; set; }
-
-    public virtual DbSet<PlacePlaceCategory> PlacePlaceCategories { get; set; }
 
     public virtual DbSet<RouteToNext> RouteToNexts { get; set; }
 
@@ -82,6 +78,45 @@ public partial class TracesDbContext : DbContext
                 .HasConstraintName("FK_ChecklistItem_Checklist");
         });
 
+        modelBuilder.Entity<Expense>(entity =>
+        {
+            entity.HasKey(e => e.ExIdPk);
+
+            entity.Property(e => e.ExIdPk).HasColumnName("ExIdPK");
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Category).HasMaxLength(50);
+            entity.Property(e => e.Date).HasColumnType("datetime");
+            entity.Property(e => e.Title).HasMaxLength(100);
+
+            entity.HasOne(d => d.PaidByUserInfoFkNavigation).WithMany(p => p.Expenses)
+                .HasForeignKey(d => d.PaidByUserInfoFk)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Expenses_UserInfo");
+
+            entity.HasOne(d => d.TripActivityFkNavigation).WithMany(p => p.Expenses)
+                .HasForeignKey(d => d.TripActivityFk)
+                .HasConstraintName("FK_Expenses_TripActivities");
+
+            entity.HasOne(d => d.TripFkNavigation).WithMany(p => p.Expenses)
+                .HasForeignKey(d => d.TripFk)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Expenses_Trip");
+        });
+
+        modelBuilder.Entity<ExpenseSplit>(entity =>
+        {
+            entity.HasKey(e => e.ExSpIdPk);
+
+            entity.ToTable("ExpenseSplit");
+
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+
+            entity.HasOne(d => d.ExpenseFkNavigation).WithMany(p => p.ExpenseSplits)
+                .HasForeignKey(d => d.ExpenseFk)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ExpenseSplit_Expenses");
+        });
+
         modelBuilder.Entity<Note>(entity =>
         {
             entity.HasKey(e => e.NoIdPk).HasName("PK__Notes__14F9C02A6FC3F9F8");
@@ -112,40 +147,6 @@ public partial class TracesDbContext : DbContext
             entity.Property(e => e.PrimaryCategory).HasMaxLength(20);
         });
 
-        modelBuilder.Entity<PlaceCategory>(entity =>
-        {
-            entity.HasKey(e => e.PlCaIdPk).HasName("PK__PlaceCat__E0C65417E2FB4FC5");
-
-            entity.Property(e => e.Name).HasMaxLength(30);
-        });
-
-        modelBuilder.Entity<PlaceDetail>(entity =>
-        {
-            entity.HasKey(e => e.PlDetailPk).HasName("PK__PlaceDet__80A720B4607A5B2D");
-
-            entity.Property(e => e.GoogleMapsUrl).HasMaxLength(400);
-            entity.Property(e => e.PhoneNumber)
-                .HasMaxLength(50)
-                .IsUnicode(false);
-            entity.Property(e => e.PlacesFk).HasColumnName("PlacesFK");
-            entity.Property(e => e.Website).HasMaxLength(300);
-
-            entity.HasOne(d => d.PlacesFkNavigation).WithMany(p => p.PlaceDetails)
-                .HasForeignKey(d => d.PlacesFk)
-                .HasConstraintName("FK_PlaceDetails_Places");
-        });
-
-        modelBuilder.Entity<PlaceHour>(entity =>
-        {
-            entity.HasKey(e => e.PlHourIdPk).HasName("PK__PlaceHou__A78D6AA3E4A8817D");
-
-            entity.Property(e => e.PlacesFk).HasColumnName("PlacesFK");
-
-            entity.HasOne(d => d.PlacesFkNavigation).WithMany(p => p.PlaceHours)
-                .HasForeignKey(d => d.PlacesFk)
-                .HasConstraintName("FK_PlaceHours_Places");
-        });
-
         modelBuilder.Entity<PlacePhoto>(entity =>
         {
             entity.HasKey(e => e.PlPhIdPk).HasName("PK__PlacePho__B0E720042D9918D2");
@@ -155,21 +156,6 @@ public partial class TracesDbContext : DbContext
             entity.HasOne(d => d.PlacesFkNavigation).WithMany(p => p.PlacePhotos)
                 .HasForeignKey(d => d.PlacesFk)
                 .HasConstraintName("FK_PlacePhotos_Places");
-        });
-
-        modelBuilder.Entity<PlacePlaceCategory>(entity =>
-        {
-            entity.HasNoKey();
-
-            entity.HasOne(d => d.PlaceCategoriesFkNavigation).WithMany()
-                .HasForeignKey(d => d.PlaceCategoriesFk)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_PlacePlaceCategories_PlaceCategories");
-
-            entity.HasOne(d => d.PlacesFkNavigation).WithMany()
-                .HasForeignKey(d => d.PlacesFk)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_PlacePlaceCategories_Places");
         });
 
         modelBuilder.Entity<RouteToNext>(entity =>

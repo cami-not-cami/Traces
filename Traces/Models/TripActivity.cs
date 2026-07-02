@@ -21,6 +21,8 @@ public partial class TripActivity
 
     public string Status { get; set; }
 
+    public virtual ICollection<Expense> Expenses { get; set; } = new List<Expense>();
+
     public virtual Place PlaceFkNavigation { get; set; }
 
     public virtual ICollection<RouteToNext> RouteToNextFromActivityFkNavigations { get; set; } = new List<RouteToNext>();

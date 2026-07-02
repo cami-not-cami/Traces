@@ -1,6 +1,6 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using System.Text.Json.Serialization;
 using Traces.Models;
 
 namespace Traces.Services
@@ -23,16 +23,26 @@ namespace Traces.Services
         /// and returns the details as a JSON response or appropriate format for the frontend
         /// </summary>
         /// <returns>directions and time</returns>
-        public async Task<RouteDTO> GetDirectionsBetweenRoutes(string originId, string destinationId, string travelMode)
-        {          
-            if (string.IsNullOrWhiteSpace(originId)) {
+        public async Task<RouteDTO> GetDirectionsBetweenRoutes(
+            string originId,
+            string destinationId,
+            string travelMode
+        )
+        {
+            if (string.IsNullOrWhiteSpace(originId))
+            {
                 throw new ArgumentException("Origin ID cannot be null or empty", nameof(originId));
             }
-            if (string.IsNullOrWhiteSpace(destinationId)) {
-                throw new ArgumentException("Destination ID cannot be null or empty", nameof(destinationId));
+            if (string.IsNullOrWhiteSpace(destinationId))
+            {
+                throw new ArgumentException(
+                    "Destination ID cannot be null or empty",
+                    nameof(destinationId)
+                );
             }
-            if (string.IsNullOrWhiteSpace(travelMode)) {
-                travelMode = "DRIVE"; // default 
+            if (string.IsNullOrWhiteSpace(travelMode))
+            {
+                travelMode = "DRIVE"; // default
             }
 
             string url = "https://routes.googleapis.com/directions/v2:computeRoutes";
@@ -44,7 +54,7 @@ namespace Traces.Services
                     origin = new { placeId = originId },
                     destination = new { placeId = destinationId },
                     travelMode = travelMode,
-                    routingPreference = "TRAFFIC_UNAWARE"
+                    routingPreference = "TRAFFIC_UNAWARE",
                 };
             }
             else
@@ -53,24 +63,31 @@ namespace Traces.Services
                 {
                     origin = new { placeId = originId },
                     destination = new { placeId = destinationId },
-                    travelMode = travelMode
+                    travelMode = travelMode,
                 };
             }
 
             var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Headers.Add("X-Goog-Api-Key", _googleApiKey);
-            request.Headers.Add("X-Goog-FieldMask", "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline");
+            request.Headers.Add(
+                "X-Goog-FieldMask",
+                "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline"
+            );
 
-            request.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload),
+            request.Content = new StringContent(
+                System.Text.Json.JsonSerializer.Serialize(payload),
                 System.Text.Encoding.UTF8,
-                "application/json");
+                "application/json"
+            );
 
             var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
 
             // Deserialize using simple strongly-typed DTOs below
-            var googleResponse = System.Text.Json.JsonSerializer.Deserialize<GoogleRoutesResponse>(responseContent);
+            var googleResponse = System.Text.Json.JsonSerializer.Deserialize<GoogleRoutesResponse>(
+                responseContent
+            );
             var route = googleResponse?.Routes?.FirstOrDefault();
 
             if (route != null)
@@ -78,14 +95,17 @@ namespace Traces.Services
                 int duration = 0;
                 if (!string.IsNullOrEmpty(route.Duration) && route.Duration.EndsWith("s"))
                 {
-                    int.TryParse(route.Duration.Substring(0, route.Duration.Length - 1), out duration);
+                    int.TryParse(
+                        route.Duration.Substring(0, route.Duration.Length - 1),
+                        out duration
+                    );
                 }
 
                 return new RouteDTO
                 {
                     PolylineEncoded = route.Polyline?.EncodedPolyline ?? "",
                     DistanceMeters = route.DistanceMeters,
-                    DurationSeconds = duration
+                    DurationSeconds = duration,
                 };
             }
 

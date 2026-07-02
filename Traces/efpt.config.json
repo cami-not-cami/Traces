@@ -27,27 +27,19 @@
          "ObjectType": 0
       },
       {
+         "Name": "[dbo].[Expenses]",
+         "ObjectType": 0
+      },
+      {
+         "Name": "[dbo].[ExpenseSplit]",
+         "ObjectType": 0
+      },
+      {
          "Name": "[dbo].[Notes]",
          "ObjectType": 0
       },
       {
-         "Name": "[dbo].[PlaceCategories]",
-         "ObjectType": 0
-      },
-      {
-         "Name": "[dbo].[PlaceDetails]",
-         "ObjectType": 0
-      },
-      {
-         "Name": "[dbo].[PlaceHours]",
-         "ObjectType": 0
-      },
-      {
          "Name": "[dbo].[PlacePhotos]",
-         "ObjectType": 0
-      },
-      {
-         "Name": "[dbo].[PlacePlaceCategories]",
          "ObjectType": 0
       },
       {

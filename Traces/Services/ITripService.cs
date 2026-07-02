@@ -56,6 +56,9 @@ namespace Traces.Services
         Task DeleteTripAsync(int tripId);
         Task RemoveTripMemberAsync(int tripId, int memberId);
         Task UpdateRouteTravelModeAsync(int fromActivityId, int toActivityId, string travelMode);
+        Task<List<ExpenseViewModel>> GetTripExpensesAsync(int tripId);
+        Task<int> AddExpenseAsync(int tripId, string title, decimal amount, string category, string? date, int paidByUserIdPk, string splitType, int? tripActivityFk);
+        Task DeleteExpenseAsync(int expenseId);
     }
 
     public class ReorderTimelineItemDto

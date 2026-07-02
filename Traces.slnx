@@ -1,4 +1,4 @@
-﻿<Solution><PropertyGroup>  <UserSecretsId>6b515563-a731-4ce4-9f49-103adbb68219</UserSecretsId>
+<Solution><PropertyGroup>  <UserSecretsId>6b515563-a731-4ce4-9f49-103adbb68219</UserSecretsId>
   </PropertyGroup>
   <Project Path="Traces/Traces.csproj" />
 </Solution>

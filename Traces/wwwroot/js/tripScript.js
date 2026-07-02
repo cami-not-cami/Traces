@@ -467,6 +467,7 @@ function saveBudget(tripId) {
         data: { tripId: tripId, budget: budget },
         success: function (data, textStatus, xhr) {
             console.log('Budget updated successfully:', xhr.status);
+            updateFinancialTotals();
         },
         error: function (xhr, textStatus, errorThrown) {
             showAlertModal('Error', 'Error saving budget: ' + xhr.status);
@@ -1062,6 +1063,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const observer = new MutationObserver(initDragAndDrop);
     observer.observe(document.body, { childList: true, subtree: true });
+    
+    // Initial financials calculation on page load
+    updateFinancialTotals();
 });
 
 // Reusable Confirmation Modal Logic
@@ -1209,4 +1213,360 @@ function changeTravelMode(fromActivityId, toActivityId, travelMode) {
             showAlertModal('Error', 'Error: ' + (xhr.responseText || 'Could not complete request.'));
         }
     });
+}
+
+// --- EXPENSE MANAGEMENT ---
+
+function openAddExpenseModal() {
+    document.getElementById('add-expense-modal').classList.remove('hidden');
+}
+
+function closeAddExpenseModal() {
+    document.getElementById('add-expense-modal').classList.add('hidden');
+    document.getElementById('add-expense-form').reset();
+}
+
+function openBreakdownModal() {
+    updateBreakdownStats();
+    document.getElementById('expense-breakdown-modal').classList.remove('hidden');
+}
+
+function closeBreakdownModal() {
+    document.getElementById('expense-breakdown-modal').classList.add('hidden');
+}
+
+function updateFinancialTotals() {
+    const expenses = window.TripConfig.expenses || [];
+    const currentUserId = window.TripConfig.currentUserIdPk || 0;
+
+    let totalSpent = 0;
+    let yourShare = 0;
+    let yourTotalPaid = 0;
+
+    expenses.forEach(e => {
+        const amt = parseFloat(e.Amount !== undefined ? e.Amount : e.amount) || 0;
+        totalSpent += amt;
+
+        const paidById = e.PaidByUserInfoFk !== undefined ? e.PaidByUserInfoFk : e.paidByUserInfoFk;
+        if (paidById === currentUserId) {
+            yourTotalPaid += amt;
+        }
+
+        const splits = e.Splits !== undefined ? e.Splits : e.splits;
+        if (splits && splits.length > 0) {
+            const userSplit = splits.find(s => (s.UserInfoFk !== undefined ? s.UserInfoFk : s.userInfoFk) === currentUserId);
+            if (userSplit) {
+                yourShare += parseFloat(userSplit.Amount !== undefined ? userSplit.Amount : userSplit.amount) || 0;
+            }
+        }
+    });
+
+    const netBalance = yourTotalPaid - yourShare;
+
+    // 1. Update total spent display
+    const totalSpentDisplay = document.getElementById('total-spent-display');
+    if (totalSpentDisplay) {
+        totalSpentDisplay.textContent = formatCurrency(totalSpent);
+    }
+
+    // 2. Read budget limit input value
+    const budgetInput = document.getElementById('budget');
+    const budgetLimit = budgetInput ? parseFloat(budgetInput.value) || 0 : 0;
+
+    // 3. Update remaining display
+    const remainingDisplay = document.getElementById('remaining-display');
+    if (remainingDisplay) {
+        const remaining = budgetLimit - totalSpent;
+        remainingDisplay.textContent = formatCurrency(remaining);
+        if (remaining < 0) {
+            remainingDisplay.className = 'text-xl sm:text-2xl font-black text-rose-600 whitespace-nowrap';
+        } else {
+            remainingDisplay.className = 'text-xl sm:text-2xl font-black text-slate-900 whitespace-nowrap';
+        }
+    }
+
+    // 4. Update progress bar
+    const progressBar = document.getElementById('budget-progress-bar');
+    if (progressBar) {
+        let percentUsed = budgetLimit > 0 ? (totalSpent / budgetLimit * 100) : 0;
+        if (percentUsed > 100) percentUsed = 100;
+        progressBar.style.width = percentUsed + '%';
+        
+        progressBar.className = 'h-full transition-all duration-500';
+        if (percentUsed >= 90) {
+            progressBar.classList.add('bg-rose-500');
+        } else if (percentUsed >= 75) {
+            progressBar.classList.add('bg-amber-500');
+        } else {
+            progressBar.classList.add('bg-emerald-500');
+        }
+    }
+
+    // 5. Update personal share display
+    const yourShareDisplay = document.getElementById('your-share-display');
+    if (yourShareDisplay) {
+        yourShareDisplay.textContent = formatCurrency(yourShare);
+    }
+
+    // 6. Update personal balance display
+    const yourBalanceDisplay = document.getElementById('your-balance-display');
+    if (yourBalanceDisplay) {
+        if (Math.abs(netBalance) < 0.01) {
+            yourBalanceDisplay.textContent = 'Settled';
+            yourBalanceDisplay.className = 'text-base font-bold text-slate-500 whitespace-nowrap';
+        } else if (netBalance > 0) {
+            yourBalanceDisplay.textContent = 'You are owed ' + formatCurrency(netBalance);
+            yourBalanceDisplay.className = 'text-base font-bold text-emerald-600 whitespace-nowrap';
+        } else {
+            yourBalanceDisplay.textContent = 'You owe ' + formatCurrency(Math.abs(netBalance));
+            yourBalanceDisplay.className = 'text-base font-bold text-rose-600 whitespace-nowrap';
+        }
+    }
+
+    // 7. Update expenses count
+    const countDisplay = document.getElementById('expenses-count-display');
+    if (countDisplay) {
+        countDisplay.textContent = expenses.length + ' items';
+    }
+
+    // 8. Rebuild the Expenses List HTML dynamically
+    const container = document.getElementById('expenses-container');
+    if (container) {
+        const noMsg = document.getElementById('no-expenses-msg');
+        container.innerHTML = '';
+        if (noMsg) container.appendChild(noMsg);
+
+        if (expenses.length === 0) {
+            if (noMsg) noMsg.classList.remove('hidden');
+        } else {
+            if (noMsg) noMsg.classList.add('hidden');
+            
+            // Sort expenses: newest first
+            const sortedExpenses = [...expenses].sort((a, b) => {
+                const dateA = new Date(a.Date || a.date || '1970-01-01');
+                const dateB = new Date(b.Date || b.date || '1970-01-01');
+                if (dateA.getTime() !== dateB.getTime()) {
+                    return dateB.getTime() - dateA.getTime();
+                }
+                const idA = a.ExpenseId !== undefined ? a.ExpenseId : a.expenseId;
+                const idB = b.ExpenseId !== undefined ? b.ExpenseId : b.expenseId;
+                return idB - idA;
+            });
+
+            sortedExpenses.forEach(exp => {
+                const category = exp.Category || exp.category || 'Other';
+                const amount = parseFloat(exp.Amount !== undefined ? exp.Amount : exp.amount) || 0;
+                const expenseId = exp.ExpenseId !== undefined ? exp.ExpenseId : exp.expenseId;
+                const title = exp.Title || exp.title || '';
+                const dateVal = exp.Date || exp.date;
+                const dateStr = dateVal ? new Date(dateVal).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }) : 'No date';
+                const paidByEmail = exp.PaidByEmail || exp.paidByEmail || '';
+                const emailPrefix = paidByEmail ? paidByEmail.split('@')[0] : 'user';
+                const splits = exp.Splits !== undefined ? exp.Splits : exp.splits || [];
+                const isSplit = splits.length > 1;
+
+                const emoji = getCategoryEmoji(category);
+                const formattedAmt = formatCurrency(amount);
+                const isSplitBadge = isSplit ? '<span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.2 rounded font-bold text-[9px] uppercase">Split equally</span>' : '';
+                const deleteButton = !window.TripConfig.viewOnly ? `
+                    <button onclick="deleteExpense(${expenseId})" class="text-slate-450 hover:text-rose-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="Delete Expense">
+                        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                    </button>
+                ` : '';
+
+                const rowHtml = `
+                    <div class="expense-row bg-white border border-slate-150 rounded-xl p-4 flex justify-between items-center hover:shadow-sm transition-all" data-expense-id="${expenseId}" data-category="${category}" data-amount="${amount}">
+                        <div class="flex items-center space-x-3 min-w-0 flex-1">
+                            <div class="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                                <span>${emoji}</span>
+                            </div>
+                            <div class="min-w-0">
+                                <h4 class="font-bold text-slate-800 text-sm truncate">${title}</h4>
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-400 mt-0.5">
+                                    <span class="font-medium text-indigo-600">${category}</span>
+                                    <span>•</span>
+                                    <span>${dateStr}</span>
+                                    <span>•</span>
+                                    <span title="${paidByEmail}">Paid by: ${emailPrefix}</span>
+                                    ${isSplit ? '<span>•</span>' : ''}
+                                    ${isSplitBadge}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3 shrink-0 ml-4">
+                            <span class="font-black text-slate-900 text-sm">${formattedAmt}</span>
+                            ${deleteButton}
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', rowHtml);
+            });
+        }
+    }
+}
+
+function formatCurrency(value) {
+    return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
+}
+
+function getCategoryEmoji(category) {
+    switch (category) {
+        case 'Food & Drink': return '🍔';
+        case 'Lodging': return '🏨';
+        case 'Transit': return '🚌';
+        case 'Sightseeing': return '🏛️';
+        case 'Activities': return '🎡';
+        case 'Shopping': return '🛍️';
+        case 'Flights': return '✈️';
+        default: return '💳';
+    }
+}
+
+function updateBreakdownStats() {
+    const expenses = window.TripConfig.expenses || [];
+    const categoryTotals = {};
+    let totalSpent = 0;
+
+    expenses.forEach(e => {
+        const category = e.Category || e.category || 'Other';
+        const amount = parseFloat(e.Amount !== undefined ? e.Amount : e.amount) || 0;
+        categoryTotals[category] = (categoryTotals[category] || 0) + amount;
+        totalSpent += amount;
+    });
+
+    const breakdownTotalDisplay = document.getElementById('breakdown-total-spent');
+    if (breakdownTotalDisplay) {
+        breakdownTotalDisplay.textContent = formatCurrency(totalSpent);
+    }
+
+    const budgetInput = document.getElementById('budget');
+    const budgetLimit = budgetInput ? parseFloat(budgetInput.value) || 0 : 0;
+    const limitPercentageDisplay = document.getElementById('breakdown-limit-percentage');
+    if (limitPercentageDisplay) {
+        let percentOfBudget = budgetLimit > 0 ? Math.round(totalSpent / budgetLimit * 100) : 0;
+        limitPercentageDisplay.textContent = percentOfBudget + '% Used';
+    }
+
+    const listContainer = document.getElementById('breakdown-categories-list');
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '';
+
+    const activeCategories = Object.keys(categoryTotals).sort((a, b) => categoryTotals[b] - categoryTotals[a]);
+
+    if (activeCategories.length === 0) {
+        listContainer.innerHTML = '<p class="text-xs text-slate-400 italic text-center py-4">No data to display. Add expenses to view a breakdown.</p>';
+        return;
+    }
+
+    activeCategories.forEach(cat => {
+        const amt = categoryTotals[cat];
+        const pct = totalSpent > 0 ? Math.round(amt / totalSpent * 100) : 0;
+        const emoji = getCategoryEmoji(cat);
+
+        const rowHtml = `
+            <div class="space-y-1.5">
+                <div class="flex justify-between items-center text-xs">
+                    <span class="font-bold text-slate-700">${emoji} ${cat}</span>
+                    <div class="space-x-1.5 font-black">
+                        <span class="text-slate-900">${formatCurrency(amt)}</span>
+                        <span class="text-indigo-500 bg-indigo-50 px-1 py-0.2 rounded text-[10px]">${pct}%</span>
+                    </div>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div class="bg-indigo-500 h-full rounded-full transition-all duration-300" style="width: ${pct}%"></div>
+                </div>
+            </div>
+        `;
+        listContainer.insertAdjacentHTML('beforeend', rowHtml);
+    });
+}
+
+$(document).ready(function() {
+    $('#add-expense-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = $(this).serialize();
+        $.ajax({
+            url: '/Trip/AddExpense',
+            type: 'POST',
+            data: formData,
+            success: function(res) {
+                if (res.success) {
+                    closeAddExpenseModal();
+                    
+                    // Update client-side expenses list
+                    window.TripConfig.expenses = res.allExpenses;
+                    
+                    updateFinancialTotals();
+                } else {
+                    showAlertModal('Error', res.message || 'Failed to add expense.');
+                }
+            },
+            error: function(xhr) {
+                showAlertModal('Error', 'Error: ' + (xhr.responseText || 'Could not complete request.'));
+            }
+        });
+    });
+});
+
+function deleteExpense(expenseId) {
+    showConfirmModal({
+        title: 'Delete Expense',
+        message: 'Are you sure you want to delete this expense?',
+        danger: true,
+        confirmText: 'Delete',
+        onConfirm: function() {
+            $.ajax({
+                url: '/Trip/DeleteExpense',
+                type: 'POST',
+                data: { expenseId: expenseId },
+                success: function(res) {
+                    if (res.success) {
+                        // Filter out from client-side array
+                        if (window.TripConfig.expenses) {
+                            window.TripConfig.expenses = window.TripConfig.expenses.filter(e => {
+                                const id = e.ExpenseId !== undefined ? e.ExpenseId : e.expenseId;
+                                return id !== expenseId;
+                            });
+                        }
+                        updateFinancialTotals();
+                    } else {
+                        showAlertModal('Error', res.message || 'Failed to delete expense.');
+                    }
+                },
+                error: function(xhr) {
+                    showAlertModal('Error', 'Error: ' + (xhr.responseText || 'Could not delete expense.'));
+                }
+            });
+        }
+    });
+}
+
+function showInlineForm(btn) {
+    const container = btn.closest('.inline-add-container');
+    if (container) {
+        const form = container.querySelector('.inline-add-form');
+        if (form) {
+            form.classList.remove('hidden');
+            btn.classList.add('hidden');
+        }
+    }
+}
+
+function hideInlineForm(btn) {
+    const container = btn.closest('.inline-add-container');
+    if (container) {
+        const form = container.querySelector('.inline-add-form');
+        const triggerBtn = container.querySelector('button[onclick*="showInlineForm"]');
+        if (form) {
+            form.classList.add('hidden');
+            form.reset();
+        }
+        if (triggerBtn) {
+            triggerBtn.classList.remove('hidden');
+        }
+    }
 }

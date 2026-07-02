@@ -27,10 +27,6 @@ public partial class Place
 
     public string CountryName { get; set; }
 
-    public virtual ICollection<PlaceDetail> PlaceDetails { get; set; } = new List<PlaceDetail>();
-
-    public virtual ICollection<PlaceHour> PlaceHours { get; set; } = new List<PlaceHour>();
-
     public virtual ICollection<PlacePhoto> PlacePhotos { get; set; } = new List<PlacePhoto>();
 
     public virtual ICollection<TripActivity> TripActivities { get; set; } = new List<TripActivity>();

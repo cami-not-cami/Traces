@@ -114,10 +114,5 @@ namespace Traces.Services
                 }
             }
         }
-        public async Task<IActionResult> GetNearbyPlaces(double latitude, double longitude)
-        {
-
-            return new JsonResult(new { success = true, data = "Nearby places would be here" });
-        }
     }
 }
