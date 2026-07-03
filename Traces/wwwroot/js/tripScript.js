@@ -644,6 +644,12 @@ async function initMap() {
                         form.querySelector('input[name="FormattedAddress"]').value = addressVal;
                         form.querySelector('input[name="PlaceName"]').value = displayNameVal;
 
+                        const coverPhotoVal = (details.photos && details.photos.length > 0) ? details.photos[0].name : '';
+                        const coverPhotoInput = form.querySelector('input[name="CoverPhoto"]');
+                        if (coverPhotoInput) {
+                            coverPhotoInput.value = coverPhotoVal;
+                        }
+
                         // Autofill category if possible
                         const select = form.querySelector('select[name="Category"]');
                         if (details.types && (details.types.includes('restaurant') || details.types.includes('food') || details.types.includes('cafe'))) {
@@ -712,7 +718,7 @@ function submitNoteForm(button) {
         url: '/Trip/AddNoteToDay',
         type: 'POST',
         data: { tripId: tripId, tripDayId: tripDayId, content: content },
-        success: function(res) {
+        success: function (res) {
             if (res.success) {
                 const targetTimeline = container.previousElementSibling;
                 if (targetTimeline && targetTimeline.classList.contains('activities-container')) {
@@ -746,7 +752,7 @@ function submitNoteForm(button) {
                 cancelActionBarForm(button);
             }
         },
-        error: function() {
+        error: function () {
             showAlertModal('Error', 'Failed to add note.');
         }
     });
@@ -765,7 +771,7 @@ function submitChecklistForm(button) {
         url: '/Trip/AddChecklistToDay',
         type: 'POST',
         data: { tripId: tripId, tripDayId: tripDayId, title: title },
-        success: function(res) {
+        success: function (res) {
             if (res.success) {
                 const targetTimeline = container.previousElementSibling;
                 if (targetTimeline && targetTimeline.classList.contains('activities-container')) {
@@ -805,7 +811,7 @@ function submitChecklistForm(button) {
                 cancelActionBarForm(button);
             }
         },
-        error: function() {
+        error: function () {
             showAlertModal('Error', 'Failed to add checklist.');
         }
     });
@@ -821,7 +827,7 @@ function submitNewChecklistItem(button, checklistId) {
         url: '/Trip/AddChecklistItem',
         type: 'POST',
         data: { checklistId: checklistId, content: content },
-        success: function(res) {
+        success: function (res) {
             if (res.success) {
                 const list = container.querySelector('.checklist-items-list');
                 if (list) {
@@ -836,7 +842,7 @@ function submitNewChecklistItem(button, checklistId) {
                 input.value = '';
             }
         },
-        error: function() {
+        error: function () {
             showAlertModal('Error', 'Failed to add checklist item.');
         }
     });
@@ -860,7 +866,7 @@ function toggleChecklistItem(checkbox) {
         url: '/Trip/ToggleChecklistItem',
         type: 'POST',
         data: { itemId: itemId },
-        success: function(res) {
+        success: function (res) {
             if (res.success) {
                 if (res.isCompleted) {
                     label.classList.add('line-through', 'text-slate-400');
@@ -871,7 +877,7 @@ function toggleChecklistItem(checkbox) {
                 }
             }
         },
-        error: function() {
+        error: function () {
             checkbox.checked = !checkbox.checked;
             showAlertModal('Error', 'Failed to update task.');
         }
@@ -884,12 +890,12 @@ function deleteTimelineItem(itemId, type) {
         message: 'Are you sure you want to delete this ' + type.toLowerCase() + '?',
         danger: true,
         confirmText: 'Delete',
-        onConfirm: function() {
+        onConfirm: function () {
             $.ajax({
                 url: '/Trip/DeleteTimelineItem',
                 type: 'POST',
                 data: { itemId: itemId, type: type },
-                success: function() {
+                success: function () {
                     const card = document.querySelector(`.timeline-card[data-timeline-id="${itemId}"][data-timeline-type="${type}"]`);
                     let googlePlaceId = null;
                     if (card) {
@@ -912,7 +918,7 @@ function deleteTimelineItem(itemId, type) {
                         }
                     }
                 },
-                error: function() {
+                error: function () {
                     showAlertModal('Error', 'Failed to delete item.');
                 }
             });
@@ -1063,7 +1069,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const observer = new MutationObserver(initDragAndDrop);
     observer.observe(document.body, { childList: true, subtree: true });
-    
+
     // Initial financials calculation on page load
     updateFinancialTotals();
 });
@@ -1089,9 +1095,9 @@ function showConfirmModal(options) {
 
     if (titleEl) titleEl.textContent = options.title || 'Are you sure?';
     if (msgEl) msgEl.textContent = options.message || 'This action cannot be undone.';
-    
+
     if (confirmBtn) {
-        confirmBtn.className = "px-4 py-2 text-white rounded-xl text-sm font-semibold shadow-sm transition-all " + 
+        confirmBtn.className = "px-4 py-2 text-white rounded-xl text-sm font-semibold shadow-sm transition-all " +
             (options.danger ? "bg-rose-600 hover:bg-rose-700 shadow-rose-500/10" : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/10");
         confirmBtn.textContent = options.confirmText || 'Confirm';
     }
@@ -1144,7 +1150,7 @@ function showAlertModal(title, message) {
         message: message,
         confirmText: 'OK',
         hideCancel: true,
-        onConfirm: function() {}
+        onConfirm: function () { }
     });
 }
 
@@ -1154,17 +1160,17 @@ function confirmDeleteTrip(tripId) {
         message: 'Are you sure you want to permanently delete this trip? All plans, checklists, notes, and members will be lost.',
         danger: true,
         confirmText: 'Delete',
-        onConfirm: function() {
+        onConfirm: function () {
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = window.TripConfig.deleteTripUrl;
-            
+
             const input = document.createElement('input');
             input.type = 'hidden';
             input.name = 'tripId';
             input.value = tripId;
             form.appendChild(input);
-            
+
             document.body.appendChild(form);
             form.submit();
         }
@@ -1177,19 +1183,19 @@ function confirmRemoveMember(tripId, memberId, email) {
         message: `Are you sure you want to remove ${email} from this trip? They will lose all access.`,
         danger: true,
         confirmText: 'Remove',
-        onConfirm: function() {
+        onConfirm: function () {
             $.ajax({
                 url: window.TripConfig.removeMemberUrl,
                 type: 'POST',
                 data: { tripId: tripId, memberId: memberId },
-                success: function(res) {
+                success: function (res) {
                     if (res.success) {
                         location.reload();
                     } else {
                         showAlertModal('Error', res.message || 'Failed to remove member.');
                     }
                 },
-                error: function(xhr) {
+                error: function (xhr) {
                     showAlertModal('Error', 'Error: ' + (xhr.responseText || 'Could not complete request.'));
                 }
             });
@@ -1291,7 +1297,7 @@ function updateFinancialTotals() {
         let percentUsed = budgetLimit > 0 ? (totalSpent / budgetLimit * 100) : 0;
         if (percentUsed > 100) percentUsed = 100;
         progressBar.style.width = percentUsed + '%';
-        
+
         progressBar.className = 'h-full transition-all duration-500';
         if (percentUsed >= 90) {
             progressBar.classList.add('bg-rose-500');
@@ -1340,7 +1346,7 @@ function updateFinancialTotals() {
             if (noMsg) noMsg.classList.remove('hidden');
         } else {
             if (noMsg) noMsg.classList.add('hidden');
-            
+
             // Sort expenses: newest first
             const sortedExpenses = [...expenses].sort((a, b) => {
                 const dateA = new Date(a.Date || a.date || '1970-01-01');
@@ -1484,28 +1490,28 @@ function updateBreakdownStats() {
     });
 }
 
-$(document).ready(function() {
-    $('#add-expense-form').on('submit', function(e) {
+$(document).ready(function () {
+    $('#add-expense-form').on('submit', function (e) {
         e.preventDefault();
-        
+
         const formData = $(this).serialize();
         $.ajax({
             url: '/Trip/AddExpense',
             type: 'POST',
             data: formData,
-            success: function(res) {
+            success: function (res) {
                 if (res.success) {
                     closeAddExpenseModal();
-                    
+
                     // Update client-side expenses list
                     window.TripConfig.expenses = res.allExpenses;
-                    
+
                     updateFinancialTotals();
                 } else {
                     showAlertModal('Error', res.message || 'Failed to add expense.');
                 }
             },
-            error: function(xhr) {
+            error: function (xhr) {
                 showAlertModal('Error', 'Error: ' + (xhr.responseText || 'Could not complete request.'));
             }
         });
@@ -1518,12 +1524,12 @@ function deleteExpense(expenseId) {
         message: 'Are you sure you want to delete this expense?',
         danger: true,
         confirmText: 'Delete',
-        onConfirm: function() {
+        onConfirm: function () {
             $.ajax({
                 url: '/Trip/DeleteExpense',
                 type: 'POST',
                 data: { expenseId: expenseId },
-                success: function(res) {
+                success: function (res) {
                     if (res.success) {
                         // Filter out from client-side array
                         if (window.TripConfig.expenses) {
@@ -1537,7 +1543,7 @@ function deleteExpense(expenseId) {
                         showAlertModal('Error', res.message || 'Failed to delete expense.');
                     }
                 },
-                error: function(xhr) {
+                error: function (xhr) {
                     showAlertModal('Error', 'Error: ' + (xhr.responseText || 'Could not delete expense.'));
                 }
             });

@@ -47,7 +47,7 @@ namespace Traces.Services
 
             string url = "https://routes.googleapis.com/directions/v2:computeRoutes";
             object payload;
-            if (travelMode == "DRIVE" || travelMode == "WALK")
+            if (travelMode == "DRIVE")
             {
                 payload = new
                 {

@@ -194,16 +194,6 @@ namespace Traces.Controllers
 
             if (tripId.HasValue && tripId.Value > 0)
             {
-                var dayIds = await _context
-                    .TripDays.Where(d => d.TripFk == tripId.Value && d.DayNumber > 0)
-                    .Select(d => d.TrDaIdPk)
-                    .ToListAsync();
-
-                foreach (var dayId in dayIds)
-                {
-                    await _tripService.UpdateRoutesForDayAsync(dayId);
-                }
-
                 var savedVm = await _tripService.GetTripViewModelAsync(tripId.Value);
                 if (savedVm != null)
                 {
@@ -443,7 +433,8 @@ namespace Traces.Controllers
             string? category,
             string? startTime,
             string? endTime,
-            string? notes
+            string? notes,
+            string? coverPhoto
         )
         {
             var userId =
@@ -468,7 +459,8 @@ namespace Traces.Controllers
                 endTime,
                 notes,
                 userId,
-                userEmail
+                userEmail,
+                coverPhoto
             );
 
             // Handle session if newly created trip and user is not authenticated
@@ -684,6 +676,7 @@ namespace Traces.Controllers
         {
             public int TripDayId { get; set; }
             public List<ReorderTimelineItem> Items { get; set; }
+ 
         }
 
         public class ReorderTimelineItem

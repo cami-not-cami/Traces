@@ -630,7 +630,8 @@ namespace Traces.Services
             string? endTime,
             string? notes,
             string? userId,
-            string? userEmail
+            string? userEmail,
+            string? coverPhoto
         )
         {
             if (tripId == 0)
@@ -733,6 +734,7 @@ namespace Traces.Services
                 Longitude = lng,
                 FormattedAddress = formattedAddress ?? "",
                 PrimaryCategory = category ?? "Attraction",
+                CoverPhoto = coverPhoto
             };
             int placeId = await GetOrCreatePlaceAsync(placeVm);
 
@@ -750,10 +752,12 @@ namespace Traces.Services
             if (TimeOnly.TryParse(endTime, out var et))
                 end = et;
 
+            var place = await _context.Places.FindAsync(placeId);
             var activity = new TripActivity
             {
                 TripDayFk = targetDay.TrDaIdPk,
                 PlaceFk = placeId,
+                PlaceFkNavigation = place,
                 StartTime = start,
                 EndTime = end,
                 OrderIndex = nextOrderIndex,

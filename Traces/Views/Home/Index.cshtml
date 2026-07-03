@@ -146,6 +146,37 @@
                 // Clear any previous error message
                 locationError.classList.add('hidden');
                 isValidSelection = true;
+
+				// Fetch place details to zoom/center the map and place/update a marker
+				fetch(`/Home/PlaceDetails?placeId=${placeId}`)
+					.then(res => {
+						if (!res.ok) throw new Error("Failed to fetch place details");
+						return res.json();
+					})
+					.then(placeDetails => {
+						if (placeDetails && placeDetails.location) {
+							const lat = placeDetails.location.latitude;
+							const lng = placeDetails.location.longitude;
+							if (map && lat !== undefined && lng !== undefined) {
+								const pos = { lat: lat, lng: lng };
+								map.setCenter(pos);
+								map.setZoom(12);
+
+								if (marker) {
+									marker.setMap(null);
+								}
+
+								marker = new google.maps.Marker({
+									position: pos,
+									map: map,
+									title: textValue
+								});
+							}
+						}
+					})
+					.catch(err => {
+						console.error("Error updating map position:", err);
+					});
 			});
 
 			dropdown.appendChild(row);
@@ -172,6 +203,7 @@
 	});
 
 	let map;
+	let marker;
 
 	async function initMap() {
 		const { Map } = await google.maps.importLibrary("maps");

@@ -22,7 +22,7 @@ namespace Traces.Services
         //Handle api call then save to db
         //refine look up
         //send autocomplete res to front
-        public async Task<string> GetPlaceDetails(string placeId)
+        public async Task<string> GetPlaceDetails(string placeId, bool includePhotos = true)
         {
             if (string.IsNullOrWhiteSpace(placeId))
             {
@@ -34,8 +34,13 @@ namespace Traces.Services
                 var request = new HttpRequestMessage(HttpMethod.Get, url);
 
                 request.Headers.Add("X-Goog-Api-Key", _googleApiKey);
-                request.Headers.Add("X-Goog-FieldMask", "displayName,formattedAddress,location,photos,rating," +
-                    "userRatingCount,reviews,nationalPhoneNumber,websiteUri,regularOpeningHours,editorialSummary,priceLevel");
+                string fields = "displayName,formattedAddress,location,rating,userRatingCount,reviews,nationalPhoneNumber,websiteUri,regularOpeningHours,editorialSummary,priceLevel";
+                if (includePhotos)
+                {
+                    fields = "displayName,formattedAddress,location,photos,rating," +
+                             "userRatingCount,reviews,nationalPhoneNumber,websiteUri,regularOpeningHours,editorialSummary,priceLevel";
+                }
+                request.Headers.Add("X-Goog-FieldMask", fields);
                 try
                 {
                     var response = await _httpClient.SendAsync(request);

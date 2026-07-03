@@ -32,7 +32,8 @@ namespace Traces.Services
             string? endTime,
             string? notes,
             string? userId,
-            string? userEmail);
+            string? userEmail,
+            string? coverPhoto);
         Task SetBudgetAsync(int tripId, double budget);
         Task UpdateTripDetailsAsync(
             int tripId,

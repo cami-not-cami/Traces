@@ -68,26 +68,26 @@ namespace Traces.Controllers
             return View(topCountries);
         }
 
-        public void ExploreCards()
-        {
-            var recentTrips = _context
-                .Trips.Include(t => t.TripDays)
-                .ThenInclude(d => d.TripActivities)
-                .ThenInclude(a => a.PlaceFkNavigation)
-                .SelectMany(t => t.TripDays)
-                .SelectMany(d => d.TripActivities)
-                .GroupBy(a => a.PlaceFkNavigation.CountryName)
-                .Select(g => new
-                {
-                    CountryName = g.Key,
-                    TripCount = g.Count(),
-                    Place = g.First().PlaceFkNavigation,
-                })
-                .OrderByDescending(x => x.TripCount)
-                .Take(3)
-                .ToList();
-        }
-
+       //public void ExploreCards()
+       // {
+       //     var recentTrips = _context
+       //         .Trips.Include(t => t.TripDays)
+       //         .ThenInclude(d => d.TripActivities)
+       //         .ThenInclude(a => a.PlaceFkNavigation)
+       //         .SelectMany(t => t.TripDays)
+       //         .SelectMany(d => d.TripActivities)
+       //         .GroupBy(a => a.PlaceFkNavigation.CountryName)
+       //         .Select(g => new
+       //         {
+       //             CountryName = g.Key,
+       //             TripCount = g.Count(),
+       //             Place = g.First().PlaceFkNavigation,
+       //         })
+       //         .OrderByDescending(x => x.TripCount)
+       //         .Take(3)
+       //         .ToList();
+       // }
+ 
         public IActionResult Privacy()
         {
             return View();
@@ -120,7 +120,40 @@ namespace Traces.Controllers
 
         public async Task<IActionResult> PlaceDetails(string placeId)
         {
-            var jsonResponse = await _googlePlacesService.GetPlaceDetails(placeId);
+            if (string.IsNullOrEmpty(placeId))
+            {
+                return BadRequest("Place ID is required");
+            }
+
+            var existingPlace = await _context.Places
+                .Include(p => p.PlacePhotos)
+                .FirstOrDefaultAsync(p => p.GooglePlaceId == placeId);
+
+            bool includePhotos = existingPlace == null || !existingPlace.PlacePhotos.Any();
+
+            var jsonResponse = await _googlePlacesService.GetPlaceDetails(placeId, includePhotos);
+
+            if (!includePhotos && existingPlace != null)
+            {
+                try
+                {
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonResponse);
+                    if (dict != null)
+                    {
+                        var photosList = existingPlace.PlacePhotos.Select(p => new
+                        {
+                            name = p.GooglePhotoReference
+                        }).ToList();
+                        dict["photos"] = photosList;
+                        jsonResponse = JsonSerializer.Serialize(dict);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error injecting cached photo reference into details JSON");
+                }
+            }
+
             return Content(jsonResponse, "application/json");
         }
 
