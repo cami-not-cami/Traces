@@ -1063,6 +1063,14 @@ namespace Traces.Services
                             .ToListAsync();
                         _context.RouteToNexts.RemoveRange(routes);
 
+                        var affectedExpenses = await _context.Expenses
+                            .Where(e => e.TripActivityFk.HasValue && activityIds.Contains(e.TripActivityFk.Value))
+                            .ToListAsync();
+                        foreach (var expense in affectedExpenses)
+                        {
+                            expense.TripActivityFk = null;
+                        }
+
                         _context.TripActivities.RemoveRange(activitiesToDelete);
                         await _context.SaveChangesAsync();
 
@@ -1197,6 +1205,15 @@ namespace Traces.Services
                         )
                         .ToListAsync();
                     _context.RouteToNexts.RemoveRange(routes);
+
+                    var affectedExpenses = await _context.Expenses
+                        .Where(e => e.TripActivityFk == itemId)
+                        .ToListAsync();
+                    foreach (var expense in affectedExpenses)
+                    {
+                        expense.TripActivityFk = null;
+                    }
+
                     _context.TripActivities.Remove(act);
                     await _context.SaveChangesAsync();
                     await UpdateRoutesForDayAsync(act.TripDayFk);
@@ -1340,6 +1357,14 @@ namespace Traces.Services
                 .Notes.Where(n => n.TripFk == tripId || dayIds.Contains(n.TripDayFk ?? 0))
                 .ToListAsync();
             _context.Notes.RemoveRange(notes);
+
+            var expenses = await _context
+                .Expenses.Include(e => e.ExpenseSplits)
+                .Where(e => e.TripFk == tripId)
+                .ToListAsync();
+            var splits = expenses.SelectMany(e => e.ExpenseSplits).ToList();
+            _context.ExpenseSplits.RemoveRange(splits);
+            _context.Expenses.RemoveRange(expenses);
 
             var activities = await _context
                 .TripActivities.Where(a => dayIds.Contains(a.TripDayFk))
