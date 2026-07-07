@@ -22,7 +22,7 @@ namespace Traces.Services
         /// calls the ROUTE MATRIX API to get directions between two routes,also the time
         /// and returns the details as a JSON response or appropriate format for the frontend
         /// </summary>
-        /// <returns>directions and time</returns>
+        /// <returns>directions and time in a routeDTO</returns>
         public async Task<RouteDTO> GetDirectionsBetweenRoutes(
             string originId,
             string destinationId,
@@ -115,7 +115,7 @@ namespace Traces.Services
 
     public class RouteDTO
     {
-        public string PolylineEncoded { get; set; }
+        public string? PolylineEncoded { get; set; }
         public int DistanceMeters { get; set; }
         public int DurationSeconds { get; set; }
     }

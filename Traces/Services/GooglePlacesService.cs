@@ -19,9 +19,13 @@ namespace Traces.Services
             _httpClient = httpClient;
         }
 
-        //Handle api call then save to db
-        //refine look up
-        //send autocomplete res to front
+        /// <summary>
+        /// calls the Google Places API to get details of a place by its placeId, including optional photos,
+        /// and returns the details as a JSON response or appropriate format for the frontend
+        /// </summary>
+        /// <param name="placeId"></param>
+        /// <param name="includePhotos"></param>
+        /// <returns></returns>
         public async Task<string> GetPlaceDetails(string placeId, bool includePhotos = true)
         {
             if (string.IsNullOrWhiteSpace(placeId))
@@ -56,10 +60,18 @@ namespace Traces.Services
                 }
             }
         }
+        /// <summary>
+        /// takes text input from user and returns a json with predictions
+        /// if latitude and longitude are provided the predictions have a bias for that area
+        /// </summary>
+        /// <param name="textInput">user input</param>
+        /// <param name="latitude">optional latitude for location bias</param>
+        /// <param name="longitude">optional longitude for location bias</param>
+        /// <returns></returns>
         public async Task<string> GetAutocomplete(string textInput, double? latitude = null, double? longitude = null)
         {
             // Call Google Places API to get autocomplete for the given text input
-            // Parse the response and save relevant details to the database
+            // Parse the response 
             // Return the details as a JSON response or appropriate format for the frontend
             if(textInput  == null) 
             {
@@ -103,6 +115,7 @@ namespace Traces.Services
                     var request = new HttpRequestMessage(HttpMethod.Post, url);
                     request.Headers.Add("X-Goog-Api-Key", _googleApiKey);
                     request.Headers.Add("X-Goog-FieldMask", "suggestions.placePrediction.text.text,suggestions.placePrediction.placeId");
+                    //convert payload to json and add to request content
                     request.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
 
                     var response = await _httpClient.SendAsync(request);

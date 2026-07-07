@@ -23,8 +23,6 @@ public partial class Place
 
     public string City { get; set; }
 
-    public int? CountryCode { get; set; }
-
     public string CountryName { get; set; }
 
     public virtual ICollection<PlacePhoto> PlacePhotos { get; set; } = new List<PlacePhoto>();

@@ -67,27 +67,6 @@ namespace Traces.Controllers
 
             return View(topCountries);
         }
-
-       //public void ExploreCards()
-       // {
-       //     var recentTrips = _context
-       //         .Trips.Include(t => t.TripDays)
-       //         .ThenInclude(d => d.TripActivities)
-       //         .ThenInclude(a => a.PlaceFkNavigation)
-       //         .SelectMany(t => t.TripDays)
-       //         .SelectMany(d => d.TripActivities)
-       //         .GroupBy(a => a.PlaceFkNavigation.CountryName)
-       //         .Select(g => new
-       //         {
-       //             CountryName = g.Key,
-       //             TripCount = g.Count(),
-       //             Place = g.First().PlaceFkNavigation,
-       //         })
-       //         .OrderByDescending(x => x.TripCount)
-       //         .Take(3)
-       //         .ToList();
-       // }
- 
         public IActionResult Privacy()
         {
             return View();

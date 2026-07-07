@@ -2,6 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace Traces.Models
 {
+    /// <summary>
+    /// Represents the view model for creating or editing a trip,
+    /// including its details, members, days, activities, notes, checklists, places to visit, and expenses.
+    /// </summary>
     public class CreateTripViewModel
     {
 
@@ -25,7 +29,9 @@ namespace Traces.Models
     }
 
 
-
+    /// <summary>
+    /// Represents information about a member of a trip, including their ID, user ID, and email address.
+    /// </summary>
     public class TripMemberInfo
     {
         public int TripMemberId { get; set; }
@@ -33,6 +39,9 @@ namespace Traces.Models
         public string Email { get; set; }
     }
 
+    /// <summary>
+    /// Represents a day in the trip, including its activities, notes, and checklists.
+    /// </summary>
     public class TripDayViewModel
     {
         public int TripDayId { get; set; }
@@ -47,7 +56,10 @@ namespace Traces.Models
         public List<TripActivityViewModel> Activities { get; set; } = new();
         public List<TimelineItemViewModel> TimelineItems { get; set; } = new();
     }
-
+    /// <summary>
+    /// Represents an item in the trip timeline, 
+    /// which can be an activity, note, or checklist, along with its order and associated details.
+    /// </summary>
     public class TimelineItemViewModel
     {
         public int Id { get; set; }
@@ -58,7 +70,10 @@ namespace Traces.Models
         public Note Note { get; set; }
         public Checklist Checklist { get; set; }
     }
-
+    /// <summary>
+    /// Represents an activity in the trip, including its start and end times, order, 
+    /// status, associated place, and route to the next activity.
+    /// </summary>
     public class TripActivityViewModel
     {
         public int TripActivityId { get; set; }
@@ -72,7 +87,9 @@ namespace Traces.Models
         public PlaceViewModel Place { get; set; }
         public RouteToNext RouteToNext { get; set; }
     }
-
+    /// <summary>
+    /// Represents the details of a place, including its ID, Google Place ID, name, coordinates, category, address, city, cover photo, and country name.
+    /// </summary>
     public class PlaceViewModel
     {
         public int PlaceId { get; set; }
@@ -86,7 +103,9 @@ namespace Traces.Models
         public string? CoverPhoto { get; set; }
         public string? CountryName { get; set; }
     }
-
+    /// <summary>
+    /// Represents an expense in the trip, including its title, amount, category, date, payer information, associated activity, and splits among members.
+    /// </summary>
     public class ExpenseViewModel
     {
         public int ExpenseId { get; set; }
@@ -101,7 +120,9 @@ namespace Traces.Models
 
         public List<ExpenseSplitViewModel> Splits { get; set; } = new();
     }
-
+    /// <summary>
+    /// Represents a split of an expense among trip members, including the user ID, email, and the amount they are responsible for.
+    /// </summary>
     public class ExpenseSplitViewModel
     {
         public int ExpenseSplitId { get; set; }

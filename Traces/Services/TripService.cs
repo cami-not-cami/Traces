@@ -1,7 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Microsoft.EntityFrameworkCore;
 using Traces.Models;
 
 namespace Traces.Services
@@ -25,7 +25,11 @@ namespace Traces.Services
             _googleMapsServices = googleMapsServices;
             _logger = logger;
         }
-
+        /// <summary>
+        /// calls the Google Places API to get details of a place by its placeId, including optional photos
+        /// </summary>
+        /// <param name="placeId"></param>
+        /// <returns>json</returns>
         public async Task<GooglePlaceResponse?> GetGooglePlaceDetailsAsync(string placeId)
         {
             var json = await _googlePlacesService.GetPlaceDetails(placeId);
@@ -42,9 +46,14 @@ namespace Traces.Services
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
             );
         }
-
+        /// <summary>
+        /// Gets the trip view model for a given tripId, including its days, activities, notes, checklists, and members.
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <returns> createTripViewModel</returns>
         public async Task<CreateTripViewModel?> GetTripViewModelAsync(int tripId)
         {
+            // load the trip with related data
             var trip = await _context
                 .Trips.Include(t => t.Checklists)
                 .ThenInclude(c => c.ChecklistItems)
@@ -66,6 +75,7 @@ namespace Traces.Services
             if (trip == null)
                 return null;
 
+            //retrieve members of the trip with their user info
             var members = await _context
                 .TripMembers.Where(tm => tm.TripFk == tripId)
                 .Include(tm => tm.IdFkNavigation)
@@ -77,6 +87,7 @@ namespace Traces.Services
                 })
                 .ToListAsync();
 
+            //map trip days to view models, including activities, notes, and checklists, ordered by day number and activity order index
             var dayViewModels = trip
                 .TripDays.OrderBy(d => d.DayNumber)
                 .Select(d =>
@@ -207,7 +218,13 @@ namespace Traces.Services
                 Expenses = expenses,
             };
         }
-
+        /// <summary>
+        /// Gets or creates a place in the database based on the provided PlaceViewModel.
+        /// If the place already exists (based on GooglePlaceId), it updates the cover photo if necessary. 
+        /// If the place does not exist, it creates a new entry in the database.
+        /// </summary>
+        /// <param name="placeVm"></param>
+        /// <returns>existing or new place ID</returns>
         public async Task<int> GetOrCreatePlaceAsync(PlaceViewModel placeVm)
         {
             var existing = await _context
@@ -267,7 +284,7 @@ namespace Traces.Services
 
             var newPlace = new Place
             {
-                GooglePlaceId = placeVm.GooglePlaceId ?? Guid.NewGuid().ToString(),
+                GooglePlaceId = placeVm.GooglePlaceId,
                 Name = placeVm.Name ?? "Unnamed Place",
                 Latitude = placeVm.Latitude,
                 Longitude = placeVm.Longitude,
@@ -295,7 +312,13 @@ namespace Traces.Services
 
             return newPlace.PlIdPk;
         }
-
+        /// <summary>
+        /// Updates the routes between activities for a specific trip day.
+        /// It calculates the routes between consecutive activities using the Google Maps API and updates the database .
+        /// If there are fewer than two activities, it removes any existing routes for that day.
+        /// </summary>
+        /// <param name="tripDayId"></param>
+        /// <returns></returns>
         public async Task UpdateRoutesForDayAsync(int tripDayId)
         {
             var activities = await _context
@@ -321,8 +344,10 @@ namespace Traces.Services
                 }
                 return;
             }
-
+            // create a set of current activity pairs to track which routes should exist
+            //A HashSet is a data structure used to store a collection of unique items in an unordered manner. It automatically ignores duplicates 
             var currentPairs = new HashSet<(int FromId, int ToId)>();
+            // iterate through the activities to create pairs of consecutive activities
             for (int i = 0; i < activities.Count - 1; i++)
             {
                 var fromActivity = activities[i];
@@ -331,6 +356,7 @@ namespace Traces.Services
             }
 
             var activityDayIds = activities.Select(a => a.TrAcIdPk).ToList();
+            // retrieve existing routes for the activities in the current day
             var existingRoutes = await _context
                 .RouteToNexts.Where(r =>
                     activityDayIds.Contains(r.FromActivityFk)
@@ -344,6 +370,9 @@ namespace Traces.Services
                     _context.RouteToNexts.Remove(route);
                 }
             }
+
+            // iterate through the activities to calculate and store routes for consecutive activities
+            // that don't already have a route in the database
             for (int i = 0; i < activities.Count - 1; i++)
             {
                 var fromActivity = activities[i];
@@ -398,6 +427,15 @@ namespace Traces.Services
             await _context.SaveChangesAsync();
         }
 
+        /// <summary>
+        /// Links a user to a trip by either their userId, userEmail, or tripMemberEmail. If the user does not exist in the database, it creates a new UserInfo entry.
+        /// It then checks if the user is already linked to the trip and adds them as a TripMember if they are not.
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <param name="userId"></param>
+        /// <param name="userEmail"></param>
+        /// <param name="tripMemberEmail"></param>
+        /// <returns></returns>
         public async Task LinkUserToTripAsync(
             int tripId,
             string? userId = null,
@@ -466,7 +504,15 @@ namespace Traces.Services
                 }
             }
         }
-
+        /// <summary>
+        /// Migrates session trips to a user's account.
+        /// It checks if the user exists in the database based on their userId or userEmail. If the user does not exist, it creates a new UserInfo entry.
+        /// Then, for each trip in the sessionTrips list, it checks if the user is already linked to that trip and adds them as a TripMember if they are not.
+        /// </summary>
+        /// <param name="sessionTrips"></param>
+        /// <param name="userId"></param>
+        /// <param name="userEmail"></param>
+        /// <returns></returns>
         public async Task MigrateSessionTripsAsync(
             List<int> sessionTrips,
             string userId,
@@ -508,7 +554,12 @@ namespace Traces.Services
             }
             await _context.SaveChangesAsync();
         }
-
+        /// <summary>
+        /// Retrieves all trips associated with a user based on their userId or userEmail. If the user does not exist in the database, it creates a new UserInfo entry.
+        /// </summary>
+        /// <param name="userId"></param>
+        /// <param name="userEmail"></param>
+        /// <returns></returns>
         public async Task<List<Trip>> GetUserTripsAsync(string userId, string? userEmail)
         {
             var userInfo = await _context.UserInfos.FirstOrDefaultAsync(u => u.UserFk == userId);
@@ -539,12 +590,23 @@ namespace Traces.Services
                 .Distinct()
                 .ToListAsync();
         }
-
+        /// <summary>
+        /// Retrieves trips based on a list of trip IDs,
+        /// typically used for fetching trips stored in a user's session.
+        /// </summary>
+        /// <param name="tripIds"></param>
+        /// <returns></returns>
         public async Task<List<Trip>> GetSessionTripsAsync(List<int> tripIds)
         {
             return await _context.Trips.Where(t => tripIds.Contains(t.TrIdPk)).ToListAsync();
         }
-
+        /// <summary>
+        /// Creates a new trip based on the provided CreateTripViewModel and links it to the user specified by userId or userEmail.
+        /// </summary>
+        /// <param name="model"></param>
+        /// <param name="userId"></param>
+        /// <param name="userEmail"></param>
+        /// <returns></returns>
         public async Task<int> CreateTripAsync(
             CreateTripViewModel model,
             string? userId,
@@ -613,7 +675,27 @@ namespace Traces.Services
 
             return trip.TrIdPk;
         }
-
+        /// <summary>
+        /// adds an activity to the trip
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <param name="tripTitle"></param>
+        /// <param name="tripStartDate"></param>
+        /// <param name="tripEndDate"></param>
+        /// <param name="placeName"></param>
+        /// <param name="googlePlaceId"></param>
+        /// <param name="latitude"></param>
+        /// <param name="longitude"></param>
+        /// <param name="formattedAddress"></param>
+        /// <param name="dayNumber"></param>
+        /// <param name="category"></param>
+        /// <param name="startTime"></param>
+        /// <param name="endTime"></param>
+        /// <param name="notes"></param>
+        /// <param name="userId"></param>
+        /// <param name="userEmail"></param>
+        /// <param name="coverPhoto"></param>
+        /// <returns></returns>
         public async Task<int> AddActivityToTripAsync(
             int tripId,
             string? tripTitle,
@@ -778,7 +860,12 @@ namespace Traces.Services
 
             return tripId;
         }
-
+        /// <summary>
+        /// sets the budget and saves it to the db
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <param name="budget"></param>
+        /// <returns></returns>
         public async Task SetBudgetAsync(int tripId, double budget)
         {
             var currentTrip = await _context.Trips.FirstOrDefaultAsync(x => x.TrIdPk == tripId);
@@ -789,7 +876,22 @@ namespace Traces.Services
                 await _context.SaveChangesAsync();
             }
         }
-
+        /// <summary>
+        /// finds the trip and updates its details
+        /// 
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <param name="title"></param>
+        /// <param name="description"></param>
+        /// <param name="startDate"></param>
+        /// <param name="endDate"></param>
+        /// <param name="placeName"></param>
+        /// <param name="googlePlaceId"></param>
+        /// <param name="latitude"></param>
+        /// <param name="longitude"></param>
+        /// <param name="address"></param>
+        /// <returns></returns>
+        /// <exception cref="KeyNotFoundException"></exception>
         public async Task UpdateTripDetailsAsync(
             int tripId,
             string? title,
@@ -1104,7 +1206,12 @@ namespace Traces.Services
             _context.Trips.Update(trip);
             await _context.SaveChangesAsync();
         }
-
+        /// <summary>
+        /// Reorders activities for a specific trip day based on the provided list of activity IDs.
+        /// </summary>
+        /// <param name="tripDayId"></param>
+        /// <param name="activityIds"></param>
+        /// <returns></returns>
         public async Task ReorderActivitiesAsync(int tripDayId, List<int> activityIds)
         {
             var affectedDayIds = new HashSet<int> { tripDayId };
@@ -1131,7 +1238,13 @@ namespace Traces.Services
                 await UpdateRoutesForDayAsync(dayId);
             }
         }
-
+        /// <summary>
+        /// Adds a note to a specific trip day, determining the next order index for the note and saving it to the database.
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <param name="tripDayId"></param>
+        /// <param name="content"></param>
+        /// <returns></returns>
         public async Task<int> AddNoteToDayAsync(int tripId, int tripDayId, string content)
         {
             int maxOrder = await GetNextOrderIndexForDay(tripDayId);
@@ -1146,7 +1259,13 @@ namespace Traces.Services
             await _context.SaveChangesAsync();
             return note.NoIdPk;
         }
-
+        /// <summary>
+        /// Adds a checklist to a specific trip day, determining the next order index for the checklist and saving it to the database.
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <param name="tripDayId"></param>
+        /// <param name="title"></param>
+        /// <returns></returns>
         public async Task<int> AddChecklistToDayAsync(int tripId, int tripDayId, string title)
         {
             int maxOrder = await GetNextOrderIndexForDay(tripDayId);
@@ -1161,7 +1280,12 @@ namespace Traces.Services
             await _context.SaveChangesAsync();
             return checklist.ChIdPk;
         }
-
+        /// <summary>
+        /// Adds an item to a specific checklist, determining the next order index for the item and saving it to the database.
+        /// </summary>
+        /// <param name="checklistId"></param>
+        /// <param name="content"></param>
+        /// <returns></returns>
         public async Task<int> AddChecklistItemAsync(int checklistId, string content)
         {
             int maxOrder =
@@ -1181,7 +1305,13 @@ namespace Traces.Services
             await _context.SaveChangesAsync();
             return item.ChItIdPk;
         }
-
+        /// <summary>
+        /// Toggles the completion status of a specific checklist item.
+        /// If the item is found, its IsCompleted property is flipped and saved to the database. 
+        /// </summary>
+        /// <param name="itemId"></param>
+        /// <returns></returns>
+        /// <exception cref="KeyNotFoundException"></exception>
         public async Task<bool> ToggleChecklistItemAsync(int itemId)
         {
             var item = await _context.ChecklistItems.FindAsync(itemId);
@@ -1191,7 +1321,12 @@ namespace Traces.Services
             await _context.SaveChangesAsync();
             return item.IsCompleted;
         }
-
+        /// <summary>
+        /// Deletes a timeline item (Activity, Note, or Checklist) based on its ID and type.
+        /// </summary>
+        /// <param name="itemId"></param>
+        /// <param name="type"></param>
+        /// <returns></returns>
         public async Task DeleteTimelineItemAsync(int itemId, string type)
         {
             if (type == "Activity")
@@ -1238,7 +1373,12 @@ namespace Traces.Services
                 }
             }
         }
-
+        /// <summary>
+        /// Reorders timeline items (Activities, Notes, and Checklists) for a specific trip day based on the provided list of ReorderTimelineItemDto objects.
+        /// </summary>
+        /// <param name="tripDayId"></param>
+        /// <param name="items"></param>
+        /// <returns></returns>
         public async Task ReorderTimelineItemsAsync(
             int tripDayId,
             List<ReorderTimelineItemDto> items
@@ -1299,7 +1439,12 @@ namespace Traces.Services
                 await UpdateRoutesForDayAsync(dayId);
             }
         }
-
+        /// <summary>
+        /// Calculates the next order index for a specific trip day by finding the maximum order index among activities, notes, and checklists,
+        /// and returning the next available index.
+        /// </summary>
+        /// <param name="tripDayId"></param>
+        /// <returns></returns>
         public async Task<int> GetNextOrderIndexForDay(int tripDayId)
         {
             int maxAct =
@@ -1319,7 +1464,11 @@ namespace Traces.Services
                     .MaxAsync() ?? -1;
             return Math.Max(maxAct, Math.Max(maxNote, maxCh)) + 1;
         }
-
+        /// <summary>
+        /// Deletes a trip and all its associated data, including trip days, trip members, activities, routes, checklists, checklist items, notes, and expenses.
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <returns></returns>
         public async Task DeleteTripAsync(int tripId)
         {
             var trip = await _context
@@ -1377,7 +1526,12 @@ namespace Traces.Services
 
             await _context.SaveChangesAsync();
         }
-
+        /// <summary>
+        /// Removes a member from a specific trip by deleting the corresponding TripMember entry from the database.
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <param name="memberId"></param>
+        /// <returns></returns>
         public async Task RemoveTripMemberAsync(int tripId, int memberId)
         {
             var member = await _context.TripMembers.FirstOrDefaultAsync(tm =>
@@ -1389,7 +1543,15 @@ namespace Traces.Services
                 await _context.SaveChangesAsync();
             }
         }
-
+        /// <summary>
+        /// Updates the travel mode for a specific route between two activities, fetching new route information from Google Maps Services and saving it to the database.
+        /// </summary>
+        /// <param name="fromActivityId"></param>
+        /// <param name="toActivityId"></param>
+        /// <param name="travelMode"></param>
+        /// <returns></returns>
+        /// <exception cref="KeyNotFoundException"></exception>
+        /// <exception cref="Exception"></exception>
         public async Task UpdateRouteTravelModeAsync(
             int fromActivityId,
             int toActivityId,
@@ -1444,7 +1606,12 @@ namespace Traces.Services
                 }
             }
         }
-
+        /// <summary>
+        /// Retrieves all expenses associated with a specific trip, including details about the user who paid, the related trip activity, and any expense splits
+        /// . The results are returned as a list of ExpenseViewModel objects.
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <returns></returns>
         public async Task<List<ExpenseViewModel>> GetTripExpensesAsync(int tripId)
         {
             var expenses = await _context
@@ -1478,7 +1645,18 @@ namespace Traces.Services
                 })
                 .ToList();
         }
-
+        /// <summary>
+        /// Adds a new expense to a specific trip, calculates the expense splits based on the provided split type, and saves the expense and its splits to the database.
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <param name="title"></param>
+        /// <param name="amount"></param>
+        /// <param name="category"></param>
+        /// <param name="date"></param>
+        /// <param name="paidByUserIdPk"></param>
+        /// <param name="splitType"></param>
+        /// <param name="tripActivityFk"></param>
+        /// <returns></returns>
         public async Task<int> AddExpenseAsync(
             int tripId,
             string title,
@@ -1569,7 +1747,11 @@ namespace Traces.Services
 
             return expense.ExIdPk;
         }
-
+        /// <summary>
+        /// Deletes an expense and its associated splits from the database based on the provided expense ID.
+        /// </summary>
+        /// <param name="expenseId"></param>
+        /// <returns></returns>
         public async Task DeleteExpenseAsync(int expenseId)
         {
             var expense = await _context
