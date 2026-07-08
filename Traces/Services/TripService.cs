@@ -426,7 +426,6 @@ namespace Traces.Services
             }
             await _context.SaveChangesAsync();
         }
-
         /// <summary>
         /// Links a user to a trip by either their userId, userEmail, or tripMemberEmail. If the user does not exist in the database, it creates a new UserInfo entry.
         /// It then checks if the user is already linked to the trip and adds them as a TripMember if they are not.
@@ -877,21 +876,22 @@ namespace Traces.Services
             }
         }
         /// <summary>
-        /// finds the trip and updates its details
-        /// 
+        /// Updates the main details of a trip (title, description, dates, and primary location/place).
+        /// If dates are changed, it shifts existing days, adds new ones, or moves  elements from removed days to Day 0.
+        /// If the primary place changes, existing activities referencing the old place are cleaned up.
         /// </summary>
-        /// <param name="tripId"></param>
-        /// <param name="title"></param>
-        /// <param name="description"></param>
-        /// <param name="startDate"></param>
-        /// <param name="endDate"></param>
-        /// <param name="placeName"></param>
-        /// <param name="googlePlaceId"></param>
-        /// <param name="latitude"></param>
-        /// <param name="longitude"></param>
-        /// <param name="address"></param>
-        /// <returns></returns>
-        /// <exception cref="KeyNotFoundException"></exception>
+        /// <param name="tripId">The primary key of the trip being updated.</param>
+        /// <param name="title">The new title of the trip, if any.</param>
+        /// <param name="description">The new description of the trip, if any.</param>
+        /// <param name="startDate">The new start date string, parsed to DateOnly.</param>
+        /// <param name="endDate">The new end date string, parsed to DateOnly.</param>
+        /// <param name="placeName">The new primary place name, if any.</param>
+        /// <param name="googlePlaceId">The new Google Place ID, if any.</param>
+        /// <param name="latitude">The new latitude string, parsed to decimal.</param>
+        /// <param name="longitude">The new longitude string, parsed to decimal.</param>
+        /// <param name="address">The new formatted address string, if any.</param>
+        /// <returns>A Task representing the asynchronous operation.</returns>
+        /// <exception cref="KeyNotFoundException">Thrown if the trip with the specified ID is not found.</exception>
         public async Task UpdateTripDetailsAsync(
             int tripId,
             string? title,
@@ -905,14 +905,18 @@ namespace Traces.Services
             string? address
         )
         {
+            // 1. Fetch the trip  from the database.
             var trip = await _context.Trips.FirstOrDefaultAsync(t => t.TrIdPk == tripId);
             if (trip == null)
                 throw new KeyNotFoundException("Trip not found");
+
+            // Update basic text properties if new values are provided.
             if (!string.IsNullOrEmpty(title))
                 trip.Title = title;
             if (!string.IsNullOrEmpty(description))
                 trip.Description = description;
 
+            // 2. Parse input start and end dates.
             DateOnly? sDate = null;
             if (startDate != null && DateOnly.TryParse(startDate, out var parsedStart))
                 sDate = parsedStart;
@@ -921,6 +925,7 @@ namespace Traces.Services
             if (endDate != null && DateOnly.TryParse(endDate, out var parsedEnd))
                 eDate = parsedEnd;
 
+            // Check if there is any change in the trip's date range.
             bool datesChanged = false;
             if (sDate != trip.StartDate || eDate != trip.EndDate)
             {
@@ -929,12 +934,14 @@ namespace Traces.Services
                 trip.EndDate = eDate;
             }
 
+            // 3. Handle restructuring of trip days if the dates changed.
             if (datesChanged)
             {
                 var existingDays = await _context
                     .TripDays.Where(d => d.TripFk == trip.TrIdPk)
                     .ToListAsync();
 
+                // Ensure Day 0 (reservoir for unscheduled activities, notes, checklists) exists.
                 var day0 = existingDays.FirstOrDefault(d => d.DayNumber == 0);
                 if (day0 == null)
                 {
@@ -948,11 +955,13 @@ namespace Traces.Services
                     await _context.SaveChangesAsync();
                 }
 
+                // Filter out the scheduled active days.
                 var activeDays = existingDays
                     .Where(d => d.DayNumber > 0)
                     .OrderBy(d => d.DayNumber)
                     .ToList();
 
+                // Generate the list of target dates for the new range.
                 var targetDates = new List<DateOnly>();
                 if (
                     trip.StartDate.HasValue
@@ -970,6 +979,7 @@ namespace Traces.Services
 
                 int targetCount = targetDates.Count;
 
+                // Re-align or create days to match the target dates.
                 for (int i = 0; i < targetCount; i++)
                 {
                     int dayNum = i + 1;
@@ -977,6 +987,7 @@ namespace Traces.Services
 
                     if (i < activeDays.Count)
                     {
+                        // Update existing day's date and number.
                         var dayToUpdate = activeDays[i];
                         dayToUpdate.DayNumber = dayNum;
                         dayToUpdate.Date = dateVal;
@@ -984,6 +995,7 @@ namespace Traces.Services
                     }
                     else
                     {
+                        // Create a new day if the range expanded.
                         var newDay = new TripDay
                         {
                             TripFk = trip.TrIdPk,
@@ -994,17 +1006,21 @@ namespace Traces.Services
                     }
                 }
 
+                // If the date range shrank, handle the excess/deleted days.
                 if (activeDays.Count > targetCount)
                 {
                     var excessDays = activeDays.Skip(targetCount).ToList();
                     foreach (var extraDay in excessDays)
                     {
+                        // A. Move activities from the removed day to Day 0.
                         var activitiesToMove = await _context
                             .TripActivities.Where(a => a.TripDayFk == extraDay.TrDaIdPk)
                             .ToListAsync();
                         if (activitiesToMove.Any())
                         {
                             var activityIds = activitiesToMove.Select(a => a.TrAcIdPk).ToList();
+                            
+                            // Delete travel routes associated with these activities since their order is changing.
                             var routesToDelete = await _context
                                 .RouteToNexts.Where(r =>
                                     activityIds.Contains(r.FromActivityFk)
@@ -1016,6 +1032,7 @@ namespace Traces.Services
                                 _context.RouteToNexts.RemoveRange(routesToDelete);
                             }
 
+                            // Calculate next available order index in Day 0.
                             int nextOrderIndex =
                                 (
                                     await _context
@@ -1024,6 +1041,7 @@ namespace Traces.Services
                                         .MaxAsync() ?? -1
                                 ) + 1;
 
+                            // Reassign activities to Day 0.
                             foreach (var act in activitiesToMove)
                             {
                                 act.TripDayFk = day0.TrDaIdPk;
@@ -1031,6 +1049,7 @@ namespace Traces.Services
                             }
                         }
 
+                        // B. Move notes from the removed day to Day 0.
                         var notesToMove = await _context
                             .Notes.Where(n => n.TripDayFk == extraDay.TrDaIdPk)
                             .ToListAsync();
@@ -1051,6 +1070,7 @@ namespace Traces.Services
                             }
                         }
 
+                        // C. Move checklists from the removed day to Day 0.
                         var checklistsToMove = await _context
                             .Checklists.Where(c => c.TripDayFk == extraDay.TrDaIdPk)
                             .ToListAsync();
@@ -1071,11 +1091,13 @@ namespace Traces.Services
                             }
                         }
 
+                        // Remove the excess Day entity.
                         _context.TripDays.Remove(extraDay);
                     }
                 }
             }
 
+            // 4. Update the primary location/place details if provided.
             if (
                 !string.IsNullOrEmpty(placeName)
                 || !string.IsNullOrEmpty(googlePlaceId)
@@ -1083,6 +1105,7 @@ namespace Traces.Services
                 || !string.IsNullOrEmpty(longitude)
             )
             {
+                // Parse coordinates safely.
                 decimal? lat = null;
                 if (!string.IsNullOrEmpty(latitude))
                 {
@@ -1113,6 +1136,8 @@ namespace Traces.Services
                         lng = parsedLng;
                     }
                 }
+
+                // Create or fetch the Place entity.
                 var placeVm = new PlaceViewModel
                 {
                     GooglePlaceId = googlePlaceId,
@@ -1123,6 +1148,8 @@ namespace Traces.Services
                     PrimaryCategory = "Attraction",
                 };
                 int placeId = await GetOrCreatePlaceAsync(placeVm);
+
+                // Fetch or initialize Day 0.
                 var day0 = await _context
                     .TripDays.Include(d => d.TripActivities)
                     .FirstOrDefaultAsync(d => d.TripFk == tripId && d.DayNumber == 0);
@@ -1138,9 +1165,11 @@ namespace Traces.Services
                     await _context.SaveChangesAsync();
                 }
 
+                // Identify the existing primary activity.
                 var oldPrimaryActivity = day0.TripActivities.FirstOrDefault(a => a.OrderIndex == 0);
                 int? oldPlaceId = oldPrimaryActivity?.PlaceFk;
 
+                // If the primary place has changed, clean up references to the old place.
                 if (oldPlaceId.HasValue && oldPlaceId.Value != placeId)
                 {
                     var activitiesToDelete = await _context
@@ -1157,6 +1186,7 @@ namespace Traces.Services
                             .Distinct()
                             .ToList();
 
+                        // Remove routes involving deleted activities.
                         var routes = await _context
                             .RouteToNexts.Where(r =>
                                 activityIds.Contains(r.FromActivityFk)
@@ -1165,6 +1195,7 @@ namespace Traces.Services
                             .ToListAsync();
                         _context.RouteToNexts.RemoveRange(routes);
 
+                        // Disassociate expenses linked to deleted activities.
                         var affectedExpenses = await _context.Expenses
                             .Where(e => e.TripActivityFk.HasValue && activityIds.Contains(e.TripActivityFk.Value))
                             .ToListAsync();
@@ -1173,6 +1204,7 @@ namespace Traces.Services
                             expense.TripActivityFk = null;
                         }
 
+                        // Remove activities and update routes for impacted days.
                         _context.TripActivities.RemoveRange(activitiesToDelete);
                         await _context.SaveChangesAsync();
 
@@ -1183,6 +1215,7 @@ namespace Traces.Services
                     }
                 }
 
+                // Add or assign the new primary activity at OrderIndex = 0.
                 var existingActivity = await _context.TripActivities.FirstOrDefaultAsync(a =>
                     a.TripDayFk == day0.TrDaIdPk && a.PlaceFk == placeId
                 );
@@ -1203,6 +1236,7 @@ namespace Traces.Services
                 }
             }
 
+            // Save all trip modifications to the database.
             _context.Trips.Update(trip);
             await _context.SaveChangesAsync();
         }

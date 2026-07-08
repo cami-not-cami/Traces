@@ -15,7 +15,11 @@ namespace Traces.Controllers
             _tripService = tripService;
 
         }
-
+        /// <summary>
+        /// Retrieves the details of a specific trip by its ID, including its members, days, activities, notes, checklists, places to visit, and expenses.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         [HttpGet("{id}")]
         public async Task<ActionResult<CreateTripViewModel>> GetTrip(int id)
         {
@@ -26,6 +30,12 @@ namespace Traces.Controllers
             }
             return Ok(tripViewModel);
         }
+        /// <summary>
+        /// Retrieves the expenses associated with a specific trip by its ID,
+        /// including details such as expense title, amount, category, date, payer information, and any associated trip activities.
+        /// </summary>
+        /// <param name="tripId"></param>
+        /// <returns></returns>
         [HttpGet("expense/{tripId}")]
         public async Task<ActionResult<ExpenseViewModel>> GetTripExpenses(int tripId)
         {
