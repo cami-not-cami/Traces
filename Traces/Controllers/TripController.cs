@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Traces.Models;
@@ -194,6 +195,14 @@ namespace Traces.Controllers
 
             if (tripId.HasValue && tripId.Value > 0)
             {
+                if (!await VerifyTripAccessAsync(tripId.Value))
+                {
+                    if (User.Identity == null || !User.Identity.IsAuthenticated)
+                    {
+                        return Challenge();
+                    }
+                    return Forbid();
+                }
                 var savedVm = await _tripService.GetTripViewModelAsync(tripId.Value);
                 if (savedVm != null)
                 {
@@ -323,6 +332,14 @@ namespace Traces.Controllers
         [HttpGet]
         public async Task<IActionResult> ExportPdf(int tripId)
         {
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated)
+                {
+                    return Challenge();
+                }
+                return Forbid();
+            }
             var tripVm = await _tripService.GetTripViewModelAsync(tripId);
             if (tripVm == null)
             {
@@ -392,6 +409,11 @@ namespace Traces.Controllers
             string? address
         )
         {
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
             try
             {
                 await _tripService.UpdateTripDetailsAsync(
@@ -437,6 +459,14 @@ namespace Traces.Controllers
             string? coverPhoto
         )
         {
+            if (tripId > 0)
+            {
+                if (!await VerifyTripAccessAsync(tripId))
+                {
+                    if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                    return Forbid();
+                }
+            }
             var userId =
                 User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value
@@ -485,29 +515,42 @@ namespace Traces.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> SetBudget(int tripId, double budget)
         {
-            if (User.Identity != null && User.Identity.IsAuthenticated)
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value
+                ?? User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (!await _tripService.HasAccessToTripAsync(tripId, userId, null))
             {
-                try
-                {
-                    await _tripService.SetBudgetAsync(tripId, budget);
-                    return StatusCode(200, "Budget updated successfully");
-                }
-                catch (Exception ex)
-                {
-                    return StatusCode(500, $"Error setting budget: {ex.Message}");
-                }
+                return Forbid();
             }
-            else
+
+            try
             {
-                return StatusCode(401, "Must be logged in to set a budget for the trip.");
+                await _tripService.SetBudgetAsync(tripId, budget);
+                return StatusCode(200, "Budget updated successfully");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error setting budget: {ex.Message}");
             }
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> InviteTripMember(int tripId, string email)
         {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value
+                ?? User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (!await _tripService.HasAccessToTripAsync(tripId, userId, null))
+            {
+                return Forbid();
+            }
+
             if (string.IsNullOrWhiteSpace(email))
             {
                 return BadRequest("Email is required.");
@@ -536,6 +579,17 @@ namespace Traces.Controllers
                 return BadRequest("Invalid request data.");
             }
 
+            var tripId = await _context.TripDays
+                .Where(d => d.TrDaIdPk == request.TripDayId)
+                .Select(d => d.TripFk)
+                .FirstOrDefaultAsync();
+
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
+
             await _tripService.ReorderActivitiesAsync(request.TripDayId, request.ActivityIds);
             return Json(new { success = true });
         }
@@ -543,6 +597,12 @@ namespace Traces.Controllers
         [HttpPost]
         public async Task<IActionResult> AddNoteToDay(int tripId, int tripDayId, string content)
         {
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
+
             if (string.IsNullOrWhiteSpace(content))
                 return BadRequest("Content is required.");
             var id = await _tripService.AddNoteToDayAsync(tripId, tripDayId, content);
@@ -552,6 +612,12 @@ namespace Traces.Controllers
         [HttpPost]
         public async Task<IActionResult> AddChecklistToDay(int tripId, int tripDayId, string title)
         {
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
+
             if (string.IsNullOrWhiteSpace(title))
                 return BadRequest("Title is required.");
             var id = await _tripService.AddChecklistToDayAsync(tripId, tripDayId, title);
@@ -561,6 +627,17 @@ namespace Traces.Controllers
         [HttpPost]
         public async Task<IActionResult> AddChecklistItem(int checklistId, string content)
         {
+            var tripId = await _context.Checklists
+                .Where(c => c.ChIdPk == checklistId)
+                .Select(c => c.TripFk)
+                .FirstOrDefaultAsync();
+
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
+
             if (string.IsNullOrWhiteSpace(content))
                 return BadRequest("Content is required.");
             var id = await _tripService.AddChecklistItemAsync(checklistId, content);
@@ -570,6 +647,17 @@ namespace Traces.Controllers
         [HttpPost]
         public async Task<IActionResult> ToggleChecklistItem(int itemId)
         {
+            var tripId = await _context.ChecklistItems
+                .Where(i => i.ChItIdPk == itemId)
+                .Select(i => i.ChecklistFkNavigation.TripFk)
+                .FirstOrDefaultAsync();
+
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
+
             try
             {
                 var isCompleted = await _tripService.ToggleChecklistItemAsync(itemId);
@@ -584,6 +672,35 @@ namespace Traces.Controllers
         [HttpPost]
         public async Task<IActionResult> DeleteTimelineItem(int itemId, string type)
         {
+            int? tripId = 0;
+            if (type == "Activity")
+            {
+                tripId = await _context.TripActivities
+                    .Where(a => a.TrAcIdPk == itemId)
+                    .Select(a => a.TripDayFkNavigation.TripFk)
+                    .FirstOrDefaultAsync();
+            }
+            else if (type == "Note")
+            {
+                tripId = await _context.Notes
+                    .Where(n => n.NoIdPk == itemId)
+                    .Select(n => n.TripFk)
+                    .FirstOrDefaultAsync();
+            }
+            else if (type == "Checklist")
+            {
+                tripId = await _context.Checklists
+                    .Where(c => c.ChIdPk == itemId)
+                    .Select(c => c.TripFk)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
+
             await _tripService.DeleteTimelineItemAsync(itemId, type);
             return Json(new { success = true });
         }
@@ -596,6 +713,18 @@ namespace Traces.Controllers
         {
             if (request == null || request.Items == null)
                 return BadRequest("Invalid request.");
+
+            var tripId = await _context.TripDays
+                .Where(d => d.TrDaIdPk == request.TripDayId)
+                .Select(d => d.TripFk)
+                .FirstOrDefaultAsync();
+
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
+
             var itemsDto = request
                 .Items.Select(i => new ReorderTimelineItemDto { Id = i.Id, Type = i.Type })
                 .ToList();
@@ -606,6 +735,11 @@ namespace Traces.Controllers
         [HttpPost]
         public async Task<IActionResult> DeleteTrip(int tripId)
         {
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
             try
             {
                 await _tripService.DeleteTripAsync(tripId);
@@ -633,8 +767,18 @@ namespace Traces.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         public async Task<IActionResult> RemoveTripMember(int tripId, int memberId)
         {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value
+                ?? User.FindFirst(ClaimTypes.Name)?.Value;
+
+            if (!await _tripService.HasAccessToTripAsync(tripId, userId, null))
+            {
+                return Forbid();
+            }
+
             try
             {
                 await _tripService.RemoveTripMemberAsync(tripId, memberId);
@@ -656,6 +800,17 @@ namespace Traces.Controllers
             string travelMode
         )
         {
+            var tripId = await _context.TripActivities
+                .Where(a => a.TrAcIdPk == fromActivityId)
+                .Select(a => a.TripDayFkNavigation.TripFk)
+                .FirstOrDefaultAsync();
+
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
+
             try
             {
                 await _tripService.UpdateRouteTravelModeAsync(
@@ -703,6 +858,12 @@ namespace Traces.Controllers
             int? tripActivityFk
         )
         {
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
+
             try
             {
                 var expenseId = await _tripService.AddExpenseAsync(
@@ -738,6 +899,17 @@ namespace Traces.Controllers
         [HttpPost]
         public async Task<IActionResult> DeleteExpense(int expenseId)
         {
+            var tripId = await _context.Expenses
+                .Where(e => e.ExIdPk == expenseId)
+                .Select(e => e.TripFk)
+                .FirstOrDefaultAsync();
+
+            if (!await VerifyTripAccessAsync(tripId))
+            {
+                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
+                return Forbid();
+            }
+
             try
             {
                 await _tripService.DeleteExpenseAsync(expenseId);
@@ -750,6 +922,28 @@ namespace Traces.Controllers
                     new { success = false, message = "Could not delete expense: " + ex.Message }
                 );
             }
+        }
+
+        /// <summary>
+        /// Helper to fetch user identity and session trips, and delegate authorization to TripService.
+        /// </summary>
+        private async Task<bool> VerifyTripAccessAsync(int? tripId)
+        {
+            if (!tripId.HasValue || tripId.Value <= 0)
+                return false;
+
+            // Extract the user's login ID
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value
+                ?? User.FindFirst(ClaimTypes.Name)?.Value;
+
+            // Extract temporary trip IDs from session
+            var sessionTripsStr = HttpContext.Session.GetString("SessionTrips");
+            var sessionTrips = string.IsNullOrEmpty(sessionTripsStr)
+                ? new List<int>()
+                : JsonSerializer.Deserialize<List<int>>(sessionTripsStr) ?? new List<int>();
+
+            return await _tripService.HasAccessToTripAsync(tripId.Value, userId, sessionTrips);
         }
     }
 }

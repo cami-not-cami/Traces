@@ -1656,6 +1656,8 @@ namespace Traces.Services
                 .Include(e => e.ExpenseSplits)
                 .ToListAsync();
 
+            var userInfos = await _context.UserInfos.ToDictionaryAsync(u => u.IdPk);
+
             return expenses
                 .Select(e => new ExpenseViewModel
                 {
@@ -1673,6 +1675,7 @@ namespace Traces.Services
                         {
                             ExpenseSplitId = s.ExSpIdPk,
                             UserInfoFk = s.UserInfoFk,
+                            UserEmail = userInfos.TryGetValue(s.UserInfoFk, out var u) ? (u.Email ?? "") : "",
                             Amount = s.Amount,
                         })
                         .ToList(),
@@ -1797,6 +1800,33 @@ namespace Traces.Services
                 _context.ExpenseSplits.RemoveRange(expense.ExpenseSplits);
                 _context.Expenses.Remove(expense);
                 await _context.SaveChangesAsync();
+            }
+        }
+
+        /// <summary>
+        /// Verifies whether the registered user (member of the trip) or anonymous user (has trip in session) can access the trip.
+        /// </summary>
+        public async Task<bool> HasAccessToTripAsync(int tripId, string? userId, List<int>? sessionTripIds)
+        {
+            var tripExists = await _context.Trips.AnyAsync(t => t.TrIdPk == tripId);
+            if (!tripExists)
+                return false;
+
+            // Check if the trip is claimed by registered users
+            var hasMembers = await _context.TripMembers.AnyAsync(tm => tm.TripFk == tripId);
+
+            if (hasMembers)
+            {
+                // If claimed, the user must be logged in and part of this trip
+                if (string.IsNullOrEmpty(userId))
+                    return false;
+
+                return await _context.TripMembers.AnyAsync(tm => tm.TripFk == tripId && tm.IdFkNavigation.UserFk == userId);
+            }
+            else
+            {
+                // If unclaimed, it's a guest trip and must exist in their session
+                return sessionTripIds != null && sessionTripIds.Contains(tripId);
             }
         }
     }

@@ -60,6 +60,10 @@ namespace Traces.Services
         Task<List<ExpenseViewModel>> GetTripExpensesAsync(int tripId);
         Task<int> AddExpenseAsync(int tripId, string title, decimal amount, string category, string? date, int paidByUserIdPk, string splitType, int? tripActivityFk);
         Task DeleteExpenseAsync(int expenseId);
+        /// <summary>
+        /// Checks if a user (registered or anonymous via session) has permission to access a trip.
+        /// </summary>
+        Task<bool> HasAccessToTripAsync(int tripId, string? userId, List<int>? sessionTripIds);
     }
 
     public class ReorderTimelineItemDto

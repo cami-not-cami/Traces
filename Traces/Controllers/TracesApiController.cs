@@ -1,20 +1,22 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Traces.Models;
 using Traces.Services;
 
 namespace Traces.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class TracesApiController : ControllerBase
     {
-        public readonly ITripService _tripService;
+        private readonly ITripService _tripService;
         public TracesApiController(ITripService tripService)
         {
             _tripService = tripService;
-
         }
+
         /// <summary>
         /// Retrieves the details of a specific trip by its ID, including its members, days, activities, notes, checklists, places to visit, and expenses.
         /// </summary>
@@ -30,6 +32,7 @@ namespace Traces.Controllers
             }
             return Ok(tripViewModel);
         }
+
         /// <summary>
         /// Retrieves the expenses associated with a specific trip by its ID,
         /// including details such as expense title, amount, category, date, payer information, and any associated trip activities.
@@ -37,7 +40,7 @@ namespace Traces.Controllers
         /// <param name="tripId"></param>
         /// <returns></returns>
         [HttpGet("expense/{tripId}")]
-        public async Task<ActionResult<ExpenseViewModel>> GetTripExpenses(int tripId)
+        public async Task<ActionResult<List<ExpenseViewModel>>> GetTripExpenses(int tripId)
         {
             var expenseViewModel = await _tripService.GetTripExpensesAsync(tripId);
             if (expenseViewModel == null)
