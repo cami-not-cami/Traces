@@ -32,37 +32,97 @@ namespace Traces.Controllers
 
         public async Task<IActionResult> Index()
         {
-            var topCountries = await _context
+            var topCountriesData = await _context
                 .TripActivities.Include(a => a.PlaceFkNavigation)
                 .Where(a =>
                     a.PlaceFkNavigation != null
                     && !string.IsNullOrEmpty(a.PlaceFkNavigation.CountryName)
                 )
                 .GroupBy(a => a.PlaceFkNavigation.CountryName)
-                .Select(g => new ExploreCardViewModel
+                .Select(g => new
                 {
                     CountryName = g.Key,
                     TripCount = g.Select(x => x.TripDayFkNavigation.TripFk).Distinct().Count(),
-                    // Grab first photo if available, otherwise use a placeholder
+                    GooglePlaceId = g.Where(x => x.PlaceFkNavigation.PlacePhotos.Any())
+                        .Select(x => x.PlaceFkNavigation.GooglePlaceId)
+                        .FirstOrDefault() ?? g.Select(x => x.PlaceFkNavigation.GooglePlaceId).FirstOrDefault(),
                     CoverPhoto = g.SelectMany(x => x.PlaceFkNavigation.PlacePhotos)
                         .Select(p => p.GooglePhotoReference)
-                        .FirstOrDefault(),
+                        .FirstOrDefault()
                 })
                 .OrderByDescending(c => c.TripCount)
                 .Take(3)
                 .ToListAsync();
 
-            foreach (var country in topCountries)
+            var topCountries = new List<ExploreCardViewModel>();
+
+            foreach (var item in topCountriesData)
             {
-                country.CardLabel =
-                    country.TripCount == 1 ? "1 Trip" : $"{country.TripCount} Trips";
-                country.Description =
-                    $"Discover the beauty of {country.CountryName} with {country.TripCount} custom {(country.TripCount == 1 ? "trip" : "trips")} created by our community.";
-                if (string.IsNullOrEmpty(country.CoverPhoto))
+                var card = new ExploreCardViewModel
                 {
-                    country.CoverPhoto =
-                        "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80";
+                    CountryName = item.CountryName,
+                    TripCount = item.TripCount,
+                    CoverPhoto = item.CoverPhoto
+                };
+
+                if (!string.IsNullOrEmpty(item.GooglePlaceId))
+                {
+                    try
+                    {
+                        var json = await _googlePlacesService.GetPlaceDetails(item.GooglePlaceId, includePhotos: true);
+                        if (!string.IsNullOrEmpty(json) && !json.StartsWith("Error"))
+                        {
+                            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                            var placeDetails = JsonSerializer.Deserialize<GooglePlaceResponse>(json, options);
+                            var freshPhoto = placeDetails?.Photos?.FirstOrDefault()?.Name;
+
+                            if (!string.IsNullOrEmpty(freshPhoto))
+                            {
+                                card.CoverPhoto = freshPhoto;
+
+                                // Update the database cache
+                                var dbPhotos = await _context.PlacePhotos
+                                    .Where(p => p.PlacesFkNavigation.GooglePlaceId == item.GooglePlaceId)
+                                    .ToListAsync();
+
+                                if (dbPhotos.Any())
+                                {
+                                    foreach (var dbPhoto in dbPhotos)
+                                    {
+                                        dbPhoto.GooglePhotoReference = freshPhoto;
+                                    }
+                                }
+                                else
+                                {
+                                    var place = await _context.Places.FirstOrDefaultAsync(p => p.GooglePlaceId == item.GooglePlaceId);
+                                    if (place != null)
+                                    {
+                                        _context.PlacePhotos.Add(new PlacePhoto
+                                        {
+                                            PlacesFk = place.PlIdPk,
+                                            GooglePhotoReference = freshPhoto
+                                        });
+                                    }
+                                }
+                                await _context.SaveChangesAsync();
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error refreshing explore card cover photo for {Country}", item.CountryName);
+                    }
                 }
+
+                card.CardLabel = card.TripCount == 1 ? "1 Trip" : $"{card.TripCount} Trips";
+                card.Description = $"Discover the beauty of {card.CountryName} with {card.TripCount} custom {(card.TripCount == 1 ? "trip" : "trips")} created by our community.";
+                
+                if (string.IsNullOrEmpty(card.CoverPhoto))
+                {
+                    card.CoverPhoto = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=800&q=80";
+                }
+
+                topCountries.Add(card);
             }
 
             return View(topCountries);
@@ -108,28 +168,42 @@ namespace Traces.Controllers
                 .Include(p => p.PlacePhotos)
                 .FirstOrDefaultAsync(p => p.GooglePlaceId == placeId);
 
-            bool includePhotos = existingPlace == null || !existingPlace.PlacePhotos.Any();
+            // We always want to fetch fresh photos because Google Photo References expire
+            var jsonResponse = await _googlePlacesService.GetPlaceDetails(placeId, includePhotos: true);
 
-            var jsonResponse = await _googlePlacesService.GetPlaceDetails(placeId, includePhotos);
-
-            if (!includePhotos && existingPlace != null)
+            if (existingPlace != null && !jsonResponse.StartsWith("Error"))
             {
                 try
                 {
-                    var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonResponse);
-                    if (dict != null)
+                    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var placeDetails = JsonSerializer.Deserialize<GooglePlaceResponse>(jsonResponse, options);
+                    var freshPhoto = placeDetails?.Photos?.FirstOrDefault()?.Name;
+
+                    if (!string.IsNullOrEmpty(freshPhoto))
                     {
-                        var photosList = existingPlace.PlacePhotos.Select(p => new
+                        // Update in database cache
+                        var dbPhotos = existingPlace.PlacePhotos.ToList();
+                        if (dbPhotos.Any())
                         {
-                            name = p.GooglePhotoReference
-                        }).ToList();
-                        dict["photos"] = photosList;
-                        jsonResponse = JsonSerializer.Serialize(dict);
+                            foreach (var dbPhoto in dbPhotos)
+                            {
+                                dbPhoto.GooglePhotoReference = freshPhoto;
+                            }
+                        }
+                        else
+                        {
+                            _context.PlacePhotos.Add(new PlacePhoto
+                            {
+                                PlacesFk = existingPlace.PlIdPk,
+                                GooglePhotoReference = freshPhoto
+                            });
+                        }
+                        await _context.SaveChangesAsync();
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error injecting cached photo reference into details JSON");
+                    _logger.LogError(ex, "Error refreshing place details photos in database for placeId {PlaceId}", placeId);
                 }
             }
 

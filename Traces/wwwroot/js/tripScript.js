@@ -2,6 +2,140 @@
 // Reads server-provided configuration from the global window.TripConfig object
 
 let map;
+let activePolylines = [];
+
+function drawRoutesOnMap(routes) {
+    if (activePolylines && activePolylines.length > 0) {
+        activePolylines.forEach(p => p.setMap(null));
+    }
+    activePolylines = [];
+
+    if (routes && routes.length > 0 && typeof google !== 'undefined' && google.maps) {
+        routes.forEach(route => {
+            const polylineStr = route.polyline || route.PolylineEncoded || route.polylineEncoded;
+            if (polylineStr) {
+                const path = google.maps.geometry.encoding.decodePath(polylineStr);
+
+                let strokeColor = "#0b03a6"; // blue for DRIVE
+                let icons = null;
+                const mode = route.travelMode || route.TravelMode;
+
+                if (mode === "WALK") {
+                    strokeColor = "#f707d3"; // pink for WALK
+                    icons = [{
+                        icon: {
+                            path: 'M 0,-1 0,1',
+                            strokeOpacity: 1,
+                            scale: 2
+                        },
+                        offset: '0',
+                        repeat: '10px'
+                    }];
+                }
+
+                const polylineOptions = {
+                    path: path,
+                    geodesic: true,
+                    strokeColor: strokeColor,
+                    strokeOpacity: mode === "WALK" ? 0 : 0.8,
+                    strokeWeight: 4,
+                    map: map
+                };
+
+                if (icons) {
+                    polylineOptions.icons = icons;
+                }
+
+                const polyInstance = new google.maps.Polyline(polylineOptions);
+                activePolylines.push(polyInstance);
+            }
+        });
+    }
+}
+
+function updateRouteBadgesInUI(routes) {
+    document.querySelectorAll('.route-badge-container').forEach(el => el.remove());
+
+    if (!routes || !Array.isArray(routes) || routes.length === 0) {
+        return;
+    }
+
+    routes.forEach(route => {
+        const fromId = route.fromActivityId || route.FromActivityId;
+        const toId = route.toActivityId || route.ToActivityId;
+        const travelMode = (route.travelMode || route.TravelMode || "DRIVE").toUpperCase();
+        const distanceMeters = route.distance || route.DistanceMeters || 0;
+        const durationSeconds = route.duration || route.DurationSeconds || 0;
+
+        if (!fromId) return;
+
+        const card = document.querySelector(`.activity-card[data-timeline-id="${fromId}"]`);
+        if (card) {
+            const km = (distanceMeters / 1000.0).toFixed(1).replace('.', ',');
+            const mins = Math.floor(durationSeconds / 60);
+
+            const isWalk = travelMode === "WALK";
+            const iconSvg = isWalk
+                ? `<svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1" /><path d="M7 21l3-4" /><path d="M16 21l-2-5-2-3 1-4" /><path d="M6 12l2-3 4-1 3 3 3 1" /></svg>`
+                : `<svg class="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="17" r="2" /><circle cx="17" cy="17" r="2" /><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6-6h15" /></svg>`;
+
+            const viewOnly = window.TripConfig.viewOnly;
+            const modeControlHtml = viewOnly
+                ? `<span class="text-slate-500 font-bold mr-1">${isWalk ? "Walk" : "Drive"}</span>`
+                : `<select onchange="changeTravelMode(${fromId}, ${toId}, this.value)" class="bg-transparent border-none text-slate-500 font-bold focus:outline-none cursor-pointer outline-none mr-1">
+                       <option value="DRIVE" ${travelMode === "DRIVE" ? 'selected="selected"' : ""}>Drive</option>
+                       <option value="WALK" ${travelMode === "WALK" ? 'selected="selected"' : ""}>Walk</option>
+                   </select>`;
+
+            const badgeHtml = `
+                <div class="route-badge-container flex items-center space-x-2 text-xs font-semibold text-slate-400 bg-slate-50/55 border border-slate-200/50 rounded-xl px-4 py-2 ml-4 mr-4 animate-in fade-in-50" data-from-activity-id="${fromId}" data-to-activity-id="${toId}">
+                    ${iconSvg}
+                    ${modeControlHtml}
+                    <span class="text-slate-400">|</span>
+                    <span>${km} km (${mins} mins)</span>
+                </div>
+            `;
+            card.insertAdjacentHTML('afterend', badgeHtml);
+        }
+    });
+}
+
+async function refreshTripRoutes() {
+    try {
+        const tripId = window.TripConfig.tripId;
+        const res = await fetch(`/api/TracesApi/${tripId}`);
+        if (res.ok) {
+            const tripData = await res.json();
+            const newRoutes = [];
+            const days = tripData.days || tripData.Days;
+            if (days) {
+                days.forEach(day => {
+                    const activities = day.activities || day.Activities;
+                    if (activities) {
+                        activities.forEach(act => {
+                            const routeToNext = act.routeToNext || act.RouteToNext;
+                            if (routeToNext) {
+                                newRoutes.push({
+                                    fromActivityId: act.tripActivityId || act.TripActivityId,
+                                    toActivityId: routeToNext.toActivityFk || routeToNext.ToActivityFk,
+                                    polyline: routeToNext.polylineEncoded || routeToNext.PolylineEncoded,
+                                    travelMode: routeToNext.travelMode || routeToNext.TravelMode,
+                                    distance: routeToNext.distanceMeters || routeToNext.DistanceMeters,
+                                    duration: routeToNext.durationSeconds || routeToNext.DurationSeconds
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+            window.TripConfig.routes = newRoutes;
+            drawRoutesOnMap(newRoutes);
+            updateRouteBadgesInUI(newRoutes);
+        }
+    } catch (err) {
+        console.error('Error refreshing trip routes:', err);
+    }
+}
 
 // Read config properties
 const googleApiKey = window.TripConfig.googleApiKey;
@@ -511,45 +645,7 @@ async function initMap() {
     }
 
     // Draw route polylines on the map if present
-    if (window.TripConfig.routes && window.TripConfig.routes.length > 0) {
-        window.TripConfig.routes.forEach(route => {
-            if (route.polyline) {
-                const path = google.maps.geometry.encoding.decodePath(route.polyline);
-
-                let strokeColor = "#0b03a6"; //blue for DRIVE
-                let icons = null;
-
-                if (route.travelMode === "WALK") {
-                    strokeColor = "#f707d3"; // pink for WALK
-                    // Render walking routes as dashed lines
-                    icons = [{
-                        icon: {
-                            path: 'M 0,-1 0,1',
-                            strokeOpacity: 1,
-                            scale: 2
-                        },
-                        offset: '0',
-                        repeat: '10px'
-                    }];
-                }
-
-                const polylineOptions = {
-                    path: path,
-                    geodesic: true,
-                    strokeColor: strokeColor,
-                    strokeOpacity: route.travelMode === "WALK" ? 0 : 0.8,
-                    strokeWeight: 4,
-                    map: map
-                };
-
-                if (icons) {
-                    polylineOptions.icons = icons;
-                }
-
-                new google.maps.Polyline(polylineOptions);
-            }
-        });
-    }
+    drawRoutesOnMap(window.TripConfig.routes);
 
     // Initialize custom autocomplete for all inline day forms using the backend Places API (New)
     document.querySelectorAll('.day-autocomplete').forEach(input => {
@@ -902,20 +998,23 @@ function deleteTimelineItem(itemId, type) {
                         googlePlaceId = card.dataset.googlePlaceId;
                         card.remove();
                     }
-                    if (type === 'Activity' && googlePlaceId) {
-                        const badge = document.querySelector(`#unscheduled-places-container [data-place-id="${googlePlaceId}"]`);
-                        if (badge) {
-                            badge.remove();
-                        }
-                        const container = document.getElementById('unscheduled-places-container');
-                        const msg = document.getElementById('no-unscheduled-places-msg');
-                        if (container && msg) {
-                            const badgesLeft = container.querySelectorAll('[data-place-id]');
-                            if (badgesLeft.length === 0) {
-                                container.classList.add('hidden');
-                                msg.classList.remove('hidden');
+                    if (type === 'Activity') {
+                        if (googlePlaceId) {
+                            const badge = document.querySelector(`#unscheduled-places-container [data-place-id="${googlePlaceId}"]`);
+                            if (badge) {
+                                badge.remove();
+                            }
+                            const container = document.getElementById('unscheduled-places-container');
+                            const msg = document.getElementById('no-unscheduled-places-msg');
+                            if (container && msg) {
+                                const badgesLeft = container.querySelectorAll('[data-place-id]');
+                                if (badgesLeft.length === 0) {
+                                    container.classList.add('hidden');
+                                    msg.classList.remove('hidden');
+                                }
                             }
                         }
+                        refreshTripRoutes();
                     }
                 },
                 error: function () {
@@ -1008,6 +1107,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     if (response.ok) {
                         console.log('Reordered timeline successfully');
+                        let resData = null;
+                        try { resData = await response.json(); } catch(e){}
+
                         if (sourceDayId && sourceDayId !== targetDayId) {
                             const sourceContainer = document.querySelector(`.activities-container[data-day-id="${sourceDayId}"]`);
                             if (sourceContainer) {
@@ -1018,7 +1120,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     }))
                                     .filter(i => !isNaN(i.id));
 
-                                await fetch('/Trip/ReorderTimelineItems', {
+                                const resp2 = await fetch('/Trip/ReorderTimelineItems', {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json'
@@ -1028,18 +1130,16 @@ document.addEventListener('DOMContentLoaded', () => {
                                         items: sourceItems
                                     })
                                 });
+                                try { resData = await resp2.json(); } catch(e){}
                             }
                         }
 
-                        // Check activity sequence after drop to decide on reload
-                        const afterActivitySequence = Array.from(document.querySelectorAll('.timeline-card[data-timeline-type="Activity"]'))
-                            .map(c => c.dataset.timelineId + '-' + (c.closest('.activities-container')?.dataset.dayId || ''))
-                            .join(',');
-
-                        if (beforeActivitySequence !== afterActivitySequence) {
-                            location.reload(); // Reload only if activities reordered/moved (updates map/routes)
+                        if (resData && resData.routes) {
+                            window.TripConfig.routes = resData.routes;
+                            drawRoutesOnMap(resData.routes);
+                            updateRouteBadgesInUI(resData.routes);
                         } else {
-                            console.log('Only notes/checklists reordered. Skipping page reload.');
+                            await refreshTripRoutes();
                         }
                     } else {
                         console.error('Failed to reorder timeline');
@@ -1209,8 +1309,12 @@ function changeTravelMode(fromActivityId, toActivityId, travelMode) {
         type: 'POST',
         data: { fromActivityId: fromActivityId, toActivityId: toActivityId, travelMode: travelMode },
         success: function (res) {
-            if (res.success) {
-                location.reload();
+            if (res.success && res.routes) {
+                window.TripConfig.routes = res.routes;
+                drawRoutesOnMap(res.routes);
+                updateRouteBadgesInUI(res.routes);
+            } else if (res.success) {
+                refreshTripRoutes();
             } else {
                 showAlertModal('Error', res.message || 'Failed to update travel mode.');
             }

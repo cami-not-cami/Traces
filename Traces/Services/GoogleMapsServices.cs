@@ -23,11 +23,7 @@ namespace Traces.Services
         /// and returns the details as a JSON response or appropriate format for the frontend
         /// </summary>
         /// <returns>directions and time in a routeDTO</returns>
-        public async Task<RouteDTO> GetDirectionsBetweenRoutes(
-            string originId,
-            string destinationId,
-            string travelMode
-        )
+        public async Task<RouteDTO> GetDirectionsBetweenRoutes(string originId,string destinationId,string travelMode)
         {
             if (string.IsNullOrWhiteSpace(originId))
             {
@@ -85,9 +81,7 @@ namespace Traces.Services
             var responseContent = await response.Content.ReadAsStringAsync();
 
             // Deserialize using simple strongly-typed DTOs below
-            var googleResponse = System.Text.Json.JsonSerializer.Deserialize<GoogleRoutesResponse>(
-                responseContent
-            );
+            var googleResponse = System.Text.Json.JsonSerializer.Deserialize<GoogleRoutesResponse>(responseContent);
             var route = googleResponse?.Routes?.FirstOrDefault();
 
             if (route != null)

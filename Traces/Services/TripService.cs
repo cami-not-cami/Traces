@@ -328,6 +328,7 @@ namespace Traces.Services
                 .OrderBy(a => a.OrderIndex)
                 .ToListAsync();
 
+            //if there are fewer than 2 activities, remove any existing routes for that day since they cant be paired
             if (activities.Count < 2)
             {
                 var activityIds = activities.Select(a => a.TrAcIdPk).ToList();
@@ -370,6 +371,7 @@ namespace Traces.Services
                     _context.RouteToNexts.Remove(route);
                 }
             }
+            await _context.SaveChangesAsync();
 
             // iterate through the activities to calculate and store routes for consecutive activities
             // that don't already have a route in the database
@@ -387,9 +389,7 @@ namespace Traces.Services
                     var originalPlaceId = fromActivity.PlaceFkNavigation?.GooglePlaceId;
                     var destinationPlaceId = toActivity.PlaceFkNavigation?.GooglePlaceId;
 
-                    if (
-                        !string.IsNullOrEmpty(originalPlaceId)
-                        && !string.IsNullOrEmpty(destinationPlaceId)
+                    if (!string.IsNullOrEmpty(originalPlaceId) && !string.IsNullOrEmpty(destinationPlaceId)
                     )
                     {
                         try

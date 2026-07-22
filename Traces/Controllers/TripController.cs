@@ -172,7 +172,7 @@ namespace Traces.Controllers
                 var firstPlace = placeVms.FirstOrDefault();
                 if (firstPlace != null)
                 {
-                    ViewBag.CoverPhoto = firstPlace.CoverPhoto;
+                    ViewBag.CoverPhoto = await GetFreshCoverPhotoAsync(firstPlace.CoverPhoto, firstPlace.GooglePlaceId);
                 }
 
                 var exploreVm = new CreateTripViewModel
@@ -209,24 +209,7 @@ namespace Traces.Controllers
                     var firstPlace = savedVm.PlacesToVisit.FirstOrDefault();
                     if (firstPlace != null)
                     {
-                        if (!string.IsNullOrEmpty(firstPlace.CoverPhoto))
-                        {
-                            ViewBag.CoverPhoto = firstPlace.CoverPhoto;
-                        }
-                        else if (!string.IsNullOrEmpty(firstPlace.GooglePlaceId))
-                        {
-                            try
-                            {
-                                var googlePlace = await _tripService.GetGooglePlaceDetailsAsync(
-                                    firstPlace.GooglePlaceId
-                                );
-                                ViewBag.CoverPhoto = googlePlace?.Photos?.FirstOrDefault()?.Name;
-                            }
-                            catch (Exception e)
-                            {
-                                ViewBag.CoverPhoto = "~/default_cover_photo.jpg"; // Fallback
-                            }
-                        }
+                        ViewBag.CoverPhoto = await GetFreshCoverPhotoAsync(firstPlace.CoverPhoto, firstPlace.GooglePlaceId);
                     }
                     var userId =
                         User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
@@ -257,9 +240,9 @@ namespace Traces.Controllers
 
                 if (existingPlace != null)
                 {
-                    ViewBag.CoverPhoto = existingPlace
-                        .PlacePhotos.FirstOrDefault()
-                        ?.GooglePhotoReference;
+                    var storedPhoto = existingPlace.PlacePhotos.FirstOrDefault()?.GooglePhotoReference;
+                    var freshPhoto = await GetFreshCoverPhotoAsync(storedPhoto, existingPlace.GooglePlaceId);
+                    ViewBag.CoverPhoto = freshPhoto;
 
                     var place = new PlaceViewModel
                     {
@@ -271,9 +254,7 @@ namespace Traces.Controllers
                         FormattedAddress = existingPlace.FormattedAddress,
                         PrimaryCategory = existingPlace.PrimaryCategory,
                         City = existingPlace.City,
-                        CoverPhoto = existingPlace
-                            .PlacePhotos.FirstOrDefault()
-                            ?.GooglePhotoReference,
+                        CoverPhoto = freshPhoto,
                     };
 
                     vm = new CreateTripViewModel
@@ -729,7 +710,26 @@ namespace Traces.Controllers
                 .Items.Select(i => new ReorderTimelineItemDto { Id = i.Id, Type = i.Type })
                 .ToList();
             await _tripService.ReorderTimelineItemsAsync(request.TripDayId, itemsDto);
-            return Json(new { success = true });
+            var routes = await GetTripRoutesAsync(tripId);
+            return Json(new { success = true, routes });
+        }
+
+        private async Task<object> GetTripRoutesAsync(int tripId)
+        {
+            var tripViewModel = await _tripService.GetTripViewModelAsync(tripId);
+            return (tripViewModel?.Days ?? new List<TripDayViewModel>())
+                .SelectMany(d => d.Activities ?? new List<TripActivityViewModel>())
+                .Where(a => a.RouteToNext != null && !string.IsNullOrEmpty(a.RouteToNext.PolylineEncoded))
+                .Select(a => new
+                {
+                    fromActivityId = a.TripActivityId,
+                    toActivityId = a.RouteToNext.ToActivityFk,
+                    polyline = a.RouteToNext.PolylineEncoded,
+                    travelMode = a.RouteToNext.TravelMode,
+                    distance = a.RouteToNext.DistanceMeters,
+                    duration = a.RouteToNext.DurationSeconds
+                })
+                .ToList();
         }
 
         [HttpPost]
@@ -818,7 +818,8 @@ namespace Traces.Controllers
                     toActivityId,
                     travelMode
                 );
-                return Json(new { success = true });
+                var routes = await GetTripRoutesAsync(tripId);
+                return Json(new { success = true, routes });
             }
             catch (Exception ex)
             {
@@ -944,6 +945,55 @@ namespace Traces.Controllers
                 : JsonSerializer.Deserialize<List<int>>(sessionTripsStr) ?? new List<int>();
 
             return await _tripService.HasAccessToTripAsync(tripId.Value, userId, sessionTrips);
+        }
+
+        private async Task<string?> GetFreshCoverPhotoAsync(string? storedPhotoReference, string? googlePlaceId)
+        {
+            if (string.IsNullOrEmpty(googlePlaceId))
+            {
+                return storedPhotoReference;
+            }
+
+            try
+            {
+                var googlePlace = await _tripService.GetGooglePlaceDetailsAsync(googlePlaceId);
+                var freshPhoto = googlePlace?.Photos?.FirstOrDefault()?.Name;
+                if (!string.IsNullOrEmpty(freshPhoto))
+                {
+                    // Update in database cache
+                    var dbPhotos = await _context.PlacePhotos
+                        .Where(p => p.PlacesFkNavigation.GooglePlaceId == googlePlaceId)
+                        .ToListAsync();
+
+                    if (dbPhotos.Any())
+                    {
+                        foreach (var dbPhoto in dbPhotos)
+                        {
+                            dbPhoto.GooglePhotoReference = freshPhoto;
+                        }
+                    }
+                    else
+                    {
+                        var place = await _context.Places.FirstOrDefaultAsync(p => p.GooglePlaceId == googlePlaceId);
+                        if (place != null)
+                        {
+                            _context.PlacePhotos.Add(new PlacePhoto
+                            {
+                                PlacesFk = place.PlIdPk,
+                                GooglePhotoReference = freshPhoto
+                            });
+                        }
+                    }
+                    await _context.SaveChangesAsync();
+                    return freshPhoto;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting fresh cover photo for place {PlaceId}", googlePlaceId);
+            }
+
+            return storedPhotoReference;
         }
     }
 }
