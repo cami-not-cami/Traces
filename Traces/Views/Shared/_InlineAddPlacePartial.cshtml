@@ -34,7 +34,7 @@
         <div class="grid grid-cols-1 gap-3">
             <!-- Place Search Input -->
             <div class="relative">
-                <input type="text" name="PlaceName" class="day-autocomplete w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" required placeholder="Search place (e.g. restaurant, museum, park)..." autocomplete="off" />
+                <input type="text" name="PlaceName" maxlength="150" class="day-autocomplete w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" required placeholder="Search place (e.g. restaurant, museum, park)..." autocomplete="off" />
                 <div class="suggestions-dropdown absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto hidden z-50"></div>
             </div>
 
@@ -62,7 +62,7 @@
 
             <div>
                 <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Notes</label>
-                <textarea name="Notes" placeholder="Add booking details, ticket numbers, costs..." rows="1" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400"></textarea>
+                <textarea name="Notes" maxlength="500" placeholder="Add booking details, ticket numbers, costs..." rows="1" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400"></textarea>
             </div>
         </div>
 

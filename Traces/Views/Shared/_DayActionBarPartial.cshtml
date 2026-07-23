@@ -54,7 +54,7 @@
         <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Add place to @dayLabel</div>
         <div class="grid grid-cols-1 gap-3">
             <div class="relative">
-                <input type="text" name="PlaceName" class="day-autocomplete w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" required placeholder="Search place..." autocomplete="off" />
+                <input type="text" name="PlaceName" maxlength="150" class="day-autocomplete w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" required placeholder="Search place..." autocomplete="off" />
                 <div class="suggestions-dropdown absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto hidden z-50"></div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -79,7 +79,7 @@
             </div>
             <div>
                 <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Notes</label>
-                <textarea name="Notes" placeholder="Add details..." rows="1" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400"></textarea>
+                <textarea name="Notes" maxlength="500" placeholder="Add details..." rows="1" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400"></textarea>
             </div>
         </div>
         <div class="flex justify-end space-x-2 pt-2 border-t border-slate-200/50">
@@ -95,7 +95,7 @@
     <!-- 2. Inline Form: Add Note -->
     <div class="hidden form-note bg-slate-50 border border-slate-200/80 rounded-2xl p-5 mt-3 space-y-3 shadow-sm text-left animate-in fade-in-50 duration-200">
         <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Add note to @dayLabel</div>
-        <textarea name="NoteContent" placeholder="Write a note..." rows="2" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" required></textarea>
+        <textarea name="NoteContent" maxlength="500" placeholder="Write a note..." rows="2" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" required></textarea>
         <div class="flex justify-end space-x-2 pt-2 border-t border-slate-200/50">
             <button type="button" onclick="cancelActionBarForm(this)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
                 Cancel
@@ -109,7 +109,7 @@
     <!-- 3. Inline Form: Add Checklist -->
     <div class="hidden form-checklist bg-slate-50 border border-slate-200/80 rounded-2xl p-5 mt-3 space-y-3 shadow-sm text-left animate-in fade-in-50 duration-200">
         <div class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">Add checklist to @dayLabel</div>
-        <input type="text" name="ChecklistTitle" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" placeholder="Checklist Title (e.g. Things to bring)..." required />
+        <input type="text" name="ChecklistTitle" maxlength="100" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400" placeholder="Checklist Title (e.g. Things to bring)..." required />
         <div class="flex justify-end space-x-2 pt-2 border-t border-slate-200/50">
             <button type="button" onclick="cancelActionBarForm(this)" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all">
                 Cancel

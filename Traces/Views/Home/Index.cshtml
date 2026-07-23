@@ -21,7 +21,6 @@
 	</section>
 
 	<section id="search-form-section" class="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
-
 		<div class="md:col-span-5 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
 			<div>
 				<h2 class="text-xl font-bold text-gray-900 mb-1">Where to next?</h2>
@@ -33,7 +32,7 @@
 						<div class="relative">
 							<span class="absolute left-3.5 top-3.5 text-gray-400">📍</span>
 							<input type="hidden" id="placeInput" name="placeId" />
-							<input type="text" id="locationInput" autocomplete="on" placeholder="Where to? (e.g. Sydney, Paris...)"
+							<input type="text" id="locationInput" maxlength="150" autocomplete="off" placeholder="Where to? (e.g. Sydney, Paris...)"
 								   class="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm placeholder-gray-400 outline-none transition-all" />
 						</div>
 
@@ -45,13 +44,14 @@
 					<div class="grid grid-cols-2 gap-4">
 						<div>
 							<label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Start Date</label>
-							<input type="date" name="startDate" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm outline-none transition-all" />
+							<input type="date" id="homeStartDate" name="startDate" min="1900-01-01" max="@(DateTime.Today.AddYears(5).ToString("yyyy-MM-dd"))" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm outline-none transition-all" />
 						</div>
 						<div>
 							<label class="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">End Date</label>
-							<input type="date" name="endDate" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm outline-none transition-all" />
+							<input type="date" id="homeEndDate" name="endDate" min="1900-01-01" max="@(DateTime.Today.AddYears(5).ToString("yyyy-MM-dd"))" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm outline-none transition-all" />
 						</div>
 					</div>
+					<span id="date-range-error" class="text-red-500 text-sm hidden">Start date cannot be after end date.</span>
 					<button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-xl mt-6 text-sm tracking-wide transition-colors active:scale-[0.98]">
 						Start Planning
 					</button>
@@ -184,15 +184,49 @@
 
 		dropdown.classList.remove('hidden');
 	}
-	document.getElementById('submitDetailsForm').addEventListener('submit', function (e) {
+	const homeStart = document.getElementById("homeStartDate");
+	const homeEnd = document.getElementById("homeEndDate");
+	const dateRangeError = document.getElementById("date-range-error");
 
-	if (!isValidSelection) {
-		e.preventDefault();
-		
-		document.getElementById('location-error').classList.remove('hidden');
-		textInput.focus();
-		return;
+	if (homeStart && homeEnd) {
+		homeStart.addEventListener("change", function () {
+			if (this.value) {
+				homeEnd.min = this.value;
+				if (homeEnd.value && homeEnd.value < this.value) {
+					homeEnd.value = this.value;
+				}
+			} else {
+				homeEnd.removeAttribute("min");
+			}
+			dateRangeError.classList.add("hidden");
+		});
+
+		homeEnd.addEventListener("change", function () {
+			if (this.value) {
+				homeStart.max = this.value;
+				if (homeStart.value && homeStart.value > this.value) {
+					homeStart.value = this.value;
+				}
+			} else {
+				homeStart.removeAttribute("max");
+			}
+			dateRangeError.classList.add("hidden");
+		});
 	}
+
+	document.getElementById('submitDetailsForm').addEventListener('submit', function (e) {
+		if (!isValidSelection) {
+			e.preventDefault();
+			document.getElementById('location-error').classList.remove('hidden');
+			textInput.focus();
+			return;
+		}
+
+		if (homeStart && homeEnd && homeStart.value && homeEnd.value && homeStart.value > homeEnd.value) {
+			e.preventDefault();
+			dateRangeError.classList.remove('hidden');
+			return;
+		}
 	});
 	document.getElementById('location-error').classList.add('hidden');
 	document.addEventListener('click', function (e) {

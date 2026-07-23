@@ -218,6 +218,39 @@ namespace Traces.Services
                 Expenses = expenses,
             };
         }
+        private static string TruncateString(string? value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            var trimmed = value.Trim();
+            return trimmed.Length > maxLength ? trimmed.Substring(0, maxLength) : trimmed;
+        }
+
+        private static DateOnly? SanitizeDate(DateOnly? date)
+        {
+            if (!date.HasValue) return null;
+            int maxYear = DateTime.Today.Year + 5;
+            if (date.Value.Year < 1900 || date.Value.Year > maxYear) return null;
+            return date;
+        }
+
+        private static DateOnly? ParseSafeDate(string? dateStr)
+        {
+            if (string.IsNullOrWhiteSpace(dateStr)) return null;
+            int maxYear = DateTime.Today.Year + 5;
+            if (DateOnly.TryParse(dateStr, out var d) && d.Year >= 1900 && d.Year <= maxYear)
+                return d;
+            return null;
+        }
+
+        private static DateTime? ParseSafeDateTime(string? dateStr)
+        {
+            if (string.IsNullOrWhiteSpace(dateStr)) return null;
+            int maxYear = DateTime.Today.Year + 5;
+            if (DateTime.TryParse(dateStr, out var d) && d.Year >= 1900 && d.Year <= maxYear)
+                return d;
+            return null;
+        }
+
         /// <summary>
         /// Gets or creates a place in the database based on the provided PlaceViewModel.
         /// If the place already exists (based on GooglePlaceId), it updates the cover photo if necessary. 
@@ -284,16 +317,16 @@ namespace Traces.Services
 
             var newPlace = new Place
             {
-                GooglePlaceId = placeVm.GooglePlaceId,
-                Name = placeVm.Name ?? "Unnamed Place",
+                GooglePlaceId = TruncateString(placeVm.GooglePlaceId, 255),
+                Name = TruncateString(placeVm.Name ?? "Unnamed Place", 150),
                 Latitude = placeVm.Latitude,
                 Longitude = placeVm.Longitude,
-                FormattedAddress = placeVm.FormattedAddress ?? "",
-                City = !string.IsNullOrEmpty(placeVm.City) ? placeVm.City : parsedCity,
-                PrimaryCategory = placeVm.PrimaryCategory ?? "Attraction",
-                CountryName = !string.IsNullOrEmpty(placeVm.CountryName)
+                FormattedAddress = TruncateString(placeVm.FormattedAddress ?? "", 300),
+                City = TruncateString(!string.IsNullOrEmpty(placeVm.City) ? placeVm.City : parsedCity, 100),
+                PrimaryCategory = TruncateString(placeVm.PrimaryCategory ?? "Attraction", 20),
+                CountryName = TruncateString(!string.IsNullOrEmpty(placeVm.CountryName)
                     ? placeVm.CountryName
-                    : parsedCountry,
+                    : parsedCountry, 60),
             };
 
             _context.Places.Add(newPlace);
@@ -612,12 +645,15 @@ namespace Traces.Services
             string? userEmail
         )
         {
+            var sDate = SanitizeDate(model.StartDate);
+            var eDate = SanitizeDate(model.EndDate);
+
             var trip = new Trip
             {
-                Title = model.Title ?? "My Trip",
-                Description = model.Description ?? "",
-                StartDate = model.StartDate,
-                EndDate = model.EndDate,
+                Title = TruncateString(model.Title ?? "My Trip", 50),
+                Description = TruncateString(model.Description ?? "", 150),
+                StartDate = sDate,
+                EndDate = eDate,
                 Budget = model.Budget ?? 0.0d,
             };
 
@@ -715,14 +751,17 @@ namespace Traces.Services
             string? coverPhoto
         )
         {
+            var sDate = ParseSafeDate(tripStartDate);
+            var eDate = ParseSafeDate(tripEndDate);
+
             if (tripId == 0)
             {
                 var trip = new Trip
                 {
-                    Title = tripTitle ?? "My Trip",
+                    Title = TruncateString(tripTitle ?? "My Trip", 50),
                     Description = "",
-                    StartDate = DateOnly.TryParse(tripStartDate, out var sDate) ? sDate : null,
-                    EndDate = DateOnly.TryParse(tripEndDate, out var eDate) ? eDate : null,
+                    StartDate = sDate,
+                    EndDate = eDate,
                     Budget = 0.0d,
                 };
 
@@ -810,11 +849,11 @@ namespace Traces.Services
             var placeVm = new PlaceViewModel
             {
                 GooglePlaceId = googlePlaceId,
-                Name = placeName ?? "Unnamed Place",
+                Name = TruncateString(placeName ?? "Unnamed Place", 150),
                 Latitude = lat,
                 Longitude = lng,
-                FormattedAddress = formattedAddress ?? "",
-                PrimaryCategory = category ?? "Attraction",
+                FormattedAddress = TruncateString(formattedAddress ?? "", 300),
+                PrimaryCategory = TruncateString(category ?? "Attraction", 20),
                 CoverPhoto = coverPhoto
             };
             int placeId = await GetOrCreatePlaceAsync(placeVm);
@@ -842,7 +881,7 @@ namespace Traces.Services
                 StartTime = start,
                 EndTime = end,
                 OrderIndex = nextOrderIndex,
-                Status = category ?? "Attraction",
+                Status = TruncateString(category ?? "Attraction", 20),
             };
 
             _context.TripActivities.Add(activity);
@@ -850,7 +889,14 @@ namespace Traces.Services
 
             if (!string.IsNullOrWhiteSpace(notes))
             {
-                var note = new Note { TripFk = tripId, Content = notes };
+                int noteOrder = await GetNextOrderIndexForDay(targetDay.TrDaIdPk);
+                var note = new Note
+                {
+                    TripFk = tripId,
+                    TripDayFk = targetDay.TrDaIdPk,
+                    Content = TruncateString(notes, 500),
+                    OrderIndex = noteOrder,
+                };
                 _context.Notes.Add(note);
                 await _context.SaveChangesAsync();
             }
@@ -912,18 +958,13 @@ namespace Traces.Services
 
             // Update basic text properties if new values are provided.
             if (!string.IsNullOrEmpty(title))
-                trip.Title = title;
+                trip.Title = TruncateString(title, 50);
             if (!string.IsNullOrEmpty(description))
-                trip.Description = description;
+                trip.Description = TruncateString(description, 150);
 
             // 2. Parse input start and end dates.
-            DateOnly? sDate = null;
-            if (startDate != null && DateOnly.TryParse(startDate, out var parsedStart))
-                sDate = parsedStart;
-
-            DateOnly? eDate = null;
-            if (endDate != null && DateOnly.TryParse(endDate, out var parsedEnd))
-                eDate = parsedEnd;
+            DateOnly? sDate = ParseSafeDate(startDate);
+            DateOnly? eDate = ParseSafeDate(endDate);
 
             // Check if there is any change in the trip's date range.
             bool datesChanged = false;
@@ -1286,7 +1327,7 @@ namespace Traces.Services
             {
                 TripFk = tripId,
                 TripDayFk = tripDayId,
-                Content = content,
+                Content = TruncateString(content, 500),
                 OrderIndex = maxOrder,
             };
             _context.Notes.Add(note);
@@ -1307,7 +1348,7 @@ namespace Traces.Services
             {
                 TripFk = tripId,
                 TripDayFk = tripDayId,
-                Title = title,
+                Title = TruncateString(title, 100),
                 OrderIndex = maxOrder,
             };
             _context.Checklists.Add(checklist);
@@ -1331,7 +1372,7 @@ namespace Traces.Services
             var item = new ChecklistItem
             {
                 ChecklistFk = checklistId,
-                Content = content,
+                Content = TruncateString(content, 150),
                 IsCompleted = false,
                 OrderIndex = maxOrder + 1,
             };
@@ -1705,18 +1746,14 @@ namespace Traces.Services
             int? tripActivityFk
         )
         {
-            DateTime? parsedDate = null;
-            if (!string.IsNullOrEmpty(date) && DateTime.TryParse(date, out var d))
-            {
-                parsedDate = d;
-            }
+            DateTime? parsedDate = ParseSafeDateTime(date);
 
             var expense = new Expense
             {
                 TripFk = tripId,
-                Title = title,
+                Title = TruncateString(title, 100),
                 Amount = amount,
-                Category = category,
+                Category = TruncateString(category, 50),
                 Date = parsedDate,
                 PaidByUserInfoFk = paidByUserIdPk,
                 TripActivityFk = tripActivityFk,

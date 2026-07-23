@@ -15,7 +15,7 @@ function drawRoutesOnMap(routes) {
             const polylineStr = route.polyline || route.PolylineEncoded || route.polylineEncoded;
             if (polylineStr) {
                 const path = google.maps.geometry.encoding.decodePath(polylineStr);
-
+                
                 let strokeColor = "#0b03a6"; // blue for DRIVE
                 let icons = null;
                 const mode = route.travelMode || route.TravelMode;
@@ -510,6 +510,33 @@ document.addEventListener("DOMContentLoaded", () => {
         dropdown.classList.remove('hidden');
     }
 
+    const startInput = document.getElementById("editTripStartDate");
+    const endInput = document.getElementById("editTripEndDate");
+
+    if (startInput && endInput) {
+        startInput.addEventListener("change", function () {
+            if (this.value) {
+                endInput.min = this.value;
+                if (endInput.value && endInput.value < this.value) {
+                    endInput.value = this.value;
+                }
+            } else {
+                endInput.removeAttribute("min");
+            }
+        });
+
+        endInput.addEventListener("change", function () {
+            if (this.value) {
+                startInput.max = this.value;
+                if (startInput.value && startInput.value > this.value) {
+                    startInput.value = this.value;
+                }
+            } else {
+                startInput.removeAttribute("max");
+            }
+        });
+    }
+
     if (form) {
         form.addEventListener("submit", function (e) {
             e.preventDefault();
@@ -522,6 +549,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (!locationText.trim()) {
                 showAlertModal("Validation", "Please select a location.");
+                return;
+            }
+
+            if (startDate && endDate && startDate > endDate) {
+                showAlertModal("Validation", "Start date cannot be after end date.");
                 return;
             }
 
@@ -820,7 +852,7 @@ function submitNoteForm(button) {
                 if (targetTimeline && targetTimeline.classList.contains('activities-container')) {
                     const newCard = `
                         <div class="timeline-card activity-card bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start cursor-grab active:cursor-grabbing" draggable="true" data-timeline-id="${res.id}" data-timeline-type="Note">
-                            <div class="flex items-start space-x-3 flex-1 pr-4">
+                            <div class="flex items-start space-x-3 flex-1 min-w-0 pr-4">
                                 <div class="mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
@@ -831,11 +863,11 @@ function submitNoteForm(button) {
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                     </svg>
                                 </div>
-                                <div class="text-sm text-slate-650 leading-relaxed pt-0.5 whitespace-pre-line">
+                                <div class="text-sm text-slate-650 leading-relaxed pt-0.5 whitespace-pre-line break-words min-w-0 flex-1 overflow-hidden" style="overflow-wrap: anywhere; word-break: break-word;">
                                     ${escapeHtml(content)}
                                 </div>
                             </div>
-                            <button type="button" onclick="deleteTimelineItem(${res.id}, 'Note')" class="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100" title="Delete Note">
+                            <button type="button" onclick="deleteTimelineItem(${res.id}, 'Note')" class="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100 shrink-0" title="Delete Note">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
@@ -873,7 +905,7 @@ function submitChecklistForm(button) {
                 if (targetTimeline && targetTimeline.classList.contains('activities-container')) {
                     const newCard = `
                         <div class="timeline-card activity-card bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start cursor-grab active:cursor-grabbing" draggable="true" data-timeline-id="${res.id}" data-timeline-type="Checklist">
-                            <div class="flex items-start space-x-3 flex-1 pr-4">
+                            <div class="flex items-start space-x-3 flex-1 min-w-0 pr-4">
                                 <div class="mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
@@ -884,17 +916,17 @@ function submitChecklistForm(button) {
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                                     </svg>
                                 </div>
-                                <div class="flex-1 pt-0.5">
-                                    <h4 class="font-bold text-slate-800 text-sm mb-3">${escapeHtml(title)}</h4>
-                                    <ul class="space-y-2.5 mb-3 checklist-items-list" data-checklist-id="${res.id}">
+                                <div class="flex-1 min-w-0 pt-0.5 overflow-hidden">
+                                    <h4 class="font-bold text-slate-800 text-sm mb-3 break-words min-w-0" style="overflow-wrap: anywhere; word-break: break-word;">${escapeHtml(title)}</h4>
+                                    <ul class="space-y-2.5 mb-3 checklist-items-list min-w-0" data-checklist-id="${res.id}">
                                     </ul>
-                                    <div class="flex items-center space-x-2 mt-2 pt-1.5 border-t border-slate-200/50">
-                                        <input type="text" placeholder="Add some items..." class="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs w-full max-w-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" onkeydown="handleAddChecklistItemKeyDown(event, ${res.id})" />
-                                        <button type="button" onclick="submitNewChecklistItem(this, ${res.id})" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 px-2 py-1">Add</button>
+                                    <div class="flex items-center space-x-2 mt-2 pt-1.5 border-t border-slate-200/50 min-w-0">
+                                        <input type="text" maxlength="150" placeholder="Add some items..." class="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs w-full max-w-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 min-w-0" onkeydown="handleAddChecklistItemKeyDown(event, ${res.id})" />
+                                        <button type="button" onclick="submitNewChecklistItem(this, ${res.id})" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 px-2 py-1 shrink-0">Add</button>
                                     </div>
                                 </div>
                             </div>
-                            <button type="button" onclick="deleteTimelineItem(${res.id}, 'Checklist')" class="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100" title="Delete Checklist">
+                            <button type="button" onclick="deleteTimelineItem(${res.id}, 'Checklist')" class="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100 shrink-0" title="Delete Checklist">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
@@ -928,9 +960,9 @@ function submitNewChecklistItem(button, checklistId) {
                 const list = container.querySelector('.checklist-items-list');
                 if (list) {
                     const newItem = `
-                        <li class="flex items-center text-xs text-slate-600" data-item-id="${res.id}">
-                            <input type="checkbox" onchange="toggleChecklistItem(this)" class="mr-2.5 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300" />
-                            <span class="text-slate-700 font-medium">${escapeHtml(content)}</span>
+                        <li class="flex items-start text-xs text-slate-600 min-w-0" data-item-id="${res.id}">
+                            <input type="checkbox" onchange="toggleChecklistItem(this)" class="mr-2.5 mt-0.5 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 shrink-0" />
+                            <span class="text-slate-700 font-medium min-w-0 flex-1 break-words" style="overflow-wrap: anywhere; word-break: break-word;">${escapeHtml(content)}</span>
                         </li>
                     `;
                     list.insertAdjacentHTML('beforeend', newItem);

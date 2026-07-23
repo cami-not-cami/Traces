@@ -202,11 +202,22 @@
                             </div>
                             @if (!Model.ViewOnly)
                             {
-                                <div onclick="openInviteModal()" class="w-9 h-9 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-xs text-slate-500 font-bold shadow-md hover:bg-slate-100 cursor-pointer transition-colors" title="Invite Friends">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                        <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
-                                    </svg>
-                                </div>
+                                if (User.Identity != null && User.Identity.IsAuthenticated)
+                                {
+                                    <div onclick="openInviteModal()" class="w-9 h-9 rounded-full border-2 border-white bg-slate-50 flex items-center justify-center text-xs text-slate-500 font-bold shadow-md hover:bg-slate-100 cursor-pointer transition-colors" title="Invite Friends">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                            <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
+                                        </svg>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="w-9 h-9 rounded-full border-2 border-white bg-slate-100 flex items-center justify-center text-xs text-slate-300 font-bold shadow-sm opacity-50 cursor-not-allowed" title="Log in to access more features">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                            <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
+                                        </svg>
+                                    </div>
+                                }
                             }
                         </div>
                     </div>
@@ -225,7 +236,7 @@
                                         <input type="hidden" id="editTripAddress" name="formattedAddress" value="@(Model.PlacesToVisit.FirstOrDefault()?.FormattedAddress)" />
                                         <input type="hidden" id="editTripPlaceName" name="placeName" value="@(Model.PlacesToVisit.FirstOrDefault()?.Name)" />
                                         
-                                        <input type="text" id="editTripLocationInput" autocomplete="off" placeholder="Where to? (e.g. Vienna, Paris...)"
+                                        <input type="text" id="editTripLocationInput" maxlength="150" autocomplete="off" placeholder="Where to? (e.g. Vienna, Paris...)"
                                                class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm placeholder-slate-400 outline-none transition-all"
                                                value="@Model.Title" />
                                     </div>
@@ -234,7 +245,7 @@
 
                                 <div>
                                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Short Description</label>
-                                    <input type="text" id="editTripDescription" name="description" placeholder="A short description of the trip..."
+                                    <input type="text" id="editTripDescription" name="description" maxlength="150" placeholder="A short description of the trip..."
                                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm placeholder-slate-400 outline-none transition-all"
                                            value="@Model.Description" />
                                 </div>
@@ -243,15 +254,17 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Start Date</label>
-                                    <input type="date" id="editTripStartDate" name="startDate" 
+                                    <input type="date" id="editTripStartDate" name="startDate" min="1900-01-01" max="@(DateTime.Today.AddYears(5).ToString("yyyy-MM-dd"))" 
                                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-500 text-sm outline-none transition-all"
-                                           value="@(Model.StartDate?.ToString("yyyy-MM-dd"))" />
+                                           value="@(Model.StartDate?.ToString("yyyy-MM-dd"))"
+                                           max="@(Model.EndDate?.ToString("yyyy-MM-dd"))" />
                                 </div>
                                 <div>
                                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">End Date</label>
-                                    <input type="date" id="editTripEndDate" name="endDate" 
+                                    <input type="date" id="editTripEndDate" name="endDate" min="1900-01-01" max="@(DateTime.Today.AddYears(5).ToString("yyyy-MM-dd"))" 
                                            class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-550/20 focus:border-indigo-500 text-sm outline-none transition-all"
-                                           value="@(Model.EndDate?.ToString("yyyy-MM-dd"))" />
+                                           value="@(Model.EndDate?.ToString("yyyy-MM-dd"))"
+                                           min="@(Model.StartDate?.ToString("yyyy-MM-dd"))" />
                                 </div>
                             </div>
 
@@ -429,7 +442,7 @@
                                             else if (item.Type == "Note" && item.Note != null)
                                             {
                                                 <div class="timeline-card activity-card bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start @(Model.ViewOnly ? "" : "cursor-grab active:cursor-grabbing")" draggable="@(Model.ViewOnly ? "false" : "true")" data-timeline-id="@item.Id" data-timeline-type="Note">
-                                                    <div class="flex items-start space-x-3 flex-1 pr-4">
+                                                    <div class="flex items-start space-x-3 flex-1 min-w-0 pr-4">
                                                         @if (!Model.ViewOnly)
                                                         {
                                                             <div class="mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
@@ -443,7 +456,7 @@
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                                             </svg>
                                                         </div>
-                                                        <div class="text-sm text-slate-650 leading-relaxed pt-0.5 whitespace-pre-line">
+                                                        <div class="text-sm text-slate-650 leading-relaxed pt-0.5 whitespace-pre-line break-words min-w-0 flex-1 overflow-hidden" style="overflow-wrap: anywhere; word-break: break-word;">
                                                             @item.Note.Content
                                                         </div>
                                                     </div>
@@ -458,52 +471,52 @@
                                                 </div>
                                             }
                                             else if (item.Type == "Checklist" && item.Checklist != null)
-                                            {
-                                                <div class="timeline-card activity-card bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start @(Model.ViewOnly ? "" : "cursor-grab active:cursor-grabbing")" draggable="@(Model.ViewOnly ? "false" : "true")" data-timeline-id="@item.Id" data-timeline-type="Checklist">
-                                                    <div class="flex items-start space-x-3 flex-1 pr-4">
-                                                        @if (!Model.ViewOnly)
-                                                        {
-                                                            <div class="mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
-                                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
-                                                                </svg>
-                                                            </div>
-                                                        }
-                                                        <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                                                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                                            </svg>
-                                                        </div>
-                                                        <div class="flex-1 pt-0.5">
-                                                            <h4 class="font-bold text-slate-800 text-sm mb-3">@item.Checklist.Title</h4>
-                                                            <ul class="space-y-2.5 mb-3 checklist-items-list" data-checklist-id="@item.Id">
-                                                                @foreach (var chItem in item.Checklist.ChecklistItems.OrderBy(ci => ci.OrderIndex))
-                                                                {
-                                                                    <li class="flex items-center text-xs text-slate-600" data-item-id="@chItem.ChItIdPk">
-                                                                        <input type="checkbox" @(chItem.IsCompleted ? "checked" : "") onchange="toggleChecklistItem(this)" class="mr-2.5 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 @(Model.ViewOnly ? "pointer-events-none" : "")" />
-                                                                        <span class="@(chItem.IsCompleted ? "line-through text-slate-400" : "text-slate-700 font-medium")">@chItem.Content</span>
-                                                                    </li>
-                                                                }
-                                                            </ul>
-                                                            @if (!Model.ViewOnly)
-                                                            {
-                                                                <div class="flex items-center space-x-2 mt-2 pt-1.5 border-t border-slate-200/50">
-                                                                    <input type="text" placeholder="Add some items..." class="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs w-full max-w-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" onkeydown="handleAddChecklistItemKeyDown(event, @item.Id)" />
-                                                                    <button type="button" onclick="submitNewChecklistItem(this, @item.Id)" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 px-2 py-1">Add</button>
-                                                                </div>
-                                                            }
-                                                        </div>
-                                                    </div>
-                                                    @if (!Model.ViewOnly)
-                                                    {
-                                                        <button type="button" onclick="deleteTimelineItem(@item.Id, 'Checklist')" class="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100" title="Delete Checklist">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg>
-                                                        </button>
-                                                    }
-                                                </div>
-                                            }
+                                             {
+                                                 <div class="timeline-card activity-card bg-slate-50 border border-slate-200 rounded-2xl p-5 hover:shadow-md transition-all flex justify-between items-start @(Model.ViewOnly ? "" : "cursor-grab active:cursor-grabbing")" draggable="@(Model.ViewOnly ? "false" : "true")" data-timeline-id="@item.Id" data-timeline-type="Checklist">
+                                                     <div class="flex items-start space-x-3 flex-1 min-w-0 pr-4">
+                                                         @if (!Model.ViewOnly)
+                                                         {
+                                                             <div class="mt-1 text-slate-300 cursor-grab active:cursor-grabbing hover:text-indigo-500 transition-colors drag-handle shrink-0">
+                                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M4 8h16M4 16h16" />
+                                                                 </svg>
+                                                             </div>
+                                                         }
+                                                         <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                                                             <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                                             </svg>
+                                                         </div>
+                                                         <div class="flex-1 min-w-0 pt-0.5 overflow-hidden">
+                                                             <h4 class="font-bold text-slate-800 text-sm mb-3 break-words min-w-0" style="overflow-wrap: anywhere; word-break: break-word;">@item.Checklist.Title</h4>
+                                                             <ul class="space-y-2.5 mb-3 checklist-items-list min-w-0" data-checklist-id="@item.Id">
+                                                                 @foreach (var chItem in item.Checklist.ChecklistItems.OrderBy(ci => ci.OrderIndex))
+                                                                 {
+                                                                     <li class="flex items-start text-xs text-slate-600 min-w-0" data-item-id="@chItem.ChItIdPk">
+                                                                         <input type="checkbox" @(chItem.IsCompleted ? "checked" : "") onchange="toggleChecklistItem(this)" class="mr-2.5 mt-0.5 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 shrink-0 @(Model.ViewOnly ? "pointer-events-none" : "")" />
+                                                                         <span class="min-w-0 flex-1 break-words @(chItem.IsCompleted ? "line-through text-slate-400" : "text-slate-700 font-medium")" style="overflow-wrap: anywhere; word-break: break-word;">@chItem.Content</span>
+                                                                     </li>
+                                                                 }
+                                                             </ul>
+                                                             @if (!Model.ViewOnly)
+                                                             {
+                                                                 <div class="flex items-center space-x-2 mt-2 pt-1.5 border-t border-slate-200/50 min-w-0">
+                                                                     <input type="text" maxlength="150" placeholder="Add some items..." class="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs w-full max-w-[200px] focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 min-w-0" onkeydown="handleAddChecklistItemKeyDown(event, @item.Id)" />
+                                                                     <button type="button" onclick="submitNewChecklistItem(this, @item.Id)" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 px-2 py-1 shrink-0">Add</button>
+                                                                 </div>
+                                                             }
+                                                         </div>
+                                                     </div>
+                                                     @if (!Model.ViewOnly)
+                                                     {
+                                                         <button type="button" onclick="deleteTimelineItem(@item.Id, 'Checklist')" class="text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-slate-100 shrink-0" title="Delete Checklist">
+                                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                             </svg>
+                                                         </button>
+                                                     }
+                                                 </div>
+                                             }
                                         }
                                     </div>
 
@@ -535,6 +548,7 @@
                     var percentUsed = budgetLimit > 0 ? (double)(totalSpent / budgetLimit * 100) : 0;
                     if (percentUsed > 100) percentUsed = 100;
                     var progressColorClass = percentUsed >= 90 ? "bg-rose-500" : percentUsed >= 75 ? "bg-amber-500" : "bg-emerald-500";
+                    var isAuthenticated = User.Identity != null && User.Identity.IsAuthenticated;
                 }
                 <div class="mb-14 border-t border-slate-200/60 pt-10">
                     <div class="flex justify-between items-center mb-6">
@@ -544,12 +558,24 @@
                         </h2>
                         @if (!Model.ViewOnly && Model.TripId > 0)
                         {
-                            <button onclick="openAddExpenseModal()" class="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/20 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center transition-all">
-                                <svg class="w-4 h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                </svg>
-                                Add expense
-                            </button>
+                            if (isAuthenticated)
+                            {
+                                <button onclick="openAddExpenseModal()" class="bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/20 text-white px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center transition-all">
+                                    <svg class="w-4 h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                    </svg>
+                                    Add expense
+                                </button>
+                            }
+                            else
+                            {
+                                <button disabled class="bg-slate-200 text-slate-400 cursor-not-allowed px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center transition-all" title="Log in to access more features">
+                                    <svg class="w-4 h-4 mr-1.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                    </svg>
+                                    Add expense
+                                </button>
+                            }
                         }
                     </div>
 
@@ -576,10 +602,11 @@
                                                    step="50"
                                                    id="budget"
                                                    value="@(Model.Budget ?? 0)"
-                                                   class="w-full bg-transparent font-black text-slate-900 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                   class="w-full bg-transparent font-black text-slate-900 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                                                    placeholder="0"
                                                    onchange="saveBudget(@Model.TripId)"
-                                                   @(Model.ViewOnly ? "disabled" : "")>
+                                                   @(Model.ViewOnly || !isAuthenticated ? "disabled" : "")
+                                                   title="@(!isAuthenticated ? "Log in to access more features" : "")">
                                             <span class="ml-1 text-slate-450">€</span>
                                         </div>
                                     </div>
@@ -779,6 +806,7 @@
                 <input type="email"
                        id="email"
                        name="email"
+                       maxlength="200"
                        placeholder="tripmember@email.com"
                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                        required />
@@ -829,7 +857,7 @@
             <!-- Title / Item Description -->
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description</label>
-                <input type="text" name="title" placeholder="e.g. Dinner, Train ticket, Entrance fee" required
+                <input type="text" name="title" maxlength="100" placeholder="e.g. Dinner, Train ticket, Entrance fee" required
                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm placeholder-slate-400 outline-none transition-all" />
             </div>
 
@@ -874,7 +902,7 @@
             <!-- Date (Optional) -->
             <div>
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Date (Optional)</label>
-                <input type="date" name="date" 
+                <input type="date" name="date" min="1900-01-01" max="@(DateTime.Today.AddYears(5).ToString("yyyy-MM-dd"))" 
                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm outline-none transition-all" />
             </div>
 

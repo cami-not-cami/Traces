@@ -257,11 +257,12 @@ namespace Traces.Controllers
                         CoverPhoto = freshPhoto,
                     };
 
+                    int maxYear = DateTime.Today.Year + 5;
                     vm = new CreateTripViewModel
                     {
                         Title = $"Trip to {place.Name}",
-                        StartDate = DateOnly.TryParse(startDate, out var start1) ? start1 : null,
-                        EndDate = DateOnly.TryParse(endDate, out var end1) ? end1 : null,
+                        StartDate = DateOnly.TryParse(startDate, out var start1) && start1.Year >= 1900 && start1.Year <= maxYear ? start1 : null,
+                        EndDate = DateOnly.TryParse(endDate, out var end1) && end1.Year >= 1900 && end1.Year <= maxYear ? end1 : null,
                         Budget = 0.0d,
                         Latitude = place.Latitude,
                         Longitude = place.Longitude,
@@ -292,11 +293,12 @@ namespace Traces.Controllers
                         CoverPhoto = googlePlace.Photos?.FirstOrDefault()?.Name,
                     };
 
+                    int maxYear2 = DateTime.Today.Year + 5;
                     vm = new CreateTripViewModel
                     {
                         Title = $"Trip to {placeVm.Name}",
-                        StartDate = DateOnly.TryParse(startDate, out var start2) ? start2 : null,
-                        EndDate = DateOnly.TryParse(endDate, out var end2) ? end2 : null,
+                        StartDate = DateOnly.TryParse(startDate, out var start2) && start2.Year >= 1900 && start2.Year <= maxYear2 ? start2 : null,
+                        EndDate = DateOnly.TryParse(endDate, out var end2) && end2.Year >= 1900 && end2.Year <= maxYear2 ? end2 : null,
                         Budget = 0.0d,
                         Latitude = placeVm.Latitude,
                         Longitude = placeVm.Longitude,
@@ -520,9 +522,13 @@ namespace Traces.Controllers
         }
 
         [HttpPost]
-        [Authorize]
         public async Task<IActionResult> InviteTripMember(int tripId, string email)
         {
+            if (User.Identity == null || !User.Identity.IsAuthenticated)
+            {
+                return Challenge();
+            }
+
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? User.FindFirst("sub")?.Value
                 ?? User.FindFirst(ClaimTypes.Name)?.Value;
@@ -859,9 +865,13 @@ namespace Traces.Controllers
             int? tripActivityFk
         )
         {
+            if (User.Identity == null || !User.Identity.IsAuthenticated)
+            {
+                return Challenge();
+            }
+
             if (!await VerifyTripAccessAsync(tripId))
             {
-                if (User.Identity == null || !User.Identity.IsAuthenticated) return Challenge();
                 return Forbid();
             }
 

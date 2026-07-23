@@ -222,6 +222,12 @@ namespace Traces.Controllers
                 ModelState.AddModelError("PlaceId", "Please select a valid location.");
                 return View("Index");
             }
+            int maxYear = DateTime.Today.Year + 5;
+            if (startDate.HasValue && (startDate.Value.Year < 1900 || startDate.Value.Year > maxYear))
+                startDate = null;
+            if (endDate.HasValue && (endDate.Value.Year < 1900 || endDate.Value.Year > maxYear))
+                endDate = null;
+
             return RedirectToAction(
                 "Index",
                 "Trip",
